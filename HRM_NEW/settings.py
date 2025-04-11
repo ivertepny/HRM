@@ -24,7 +24,10 @@ INSTALLED_APPS = [
     'django.contrib.staticfiles',
     'django.contrib.sites',
     'django.contrib.admin',
+    'rest_framework',
+    'drf_spectacular',
     'users',
+    'employees',
 ]
 
 MIDDLEWARE = [
@@ -124,6 +127,7 @@ SPECTACULAR_SETTINGS = {
     "TITLE": "HRM API",
     "DESCRIPTION": "HR Management System",
     "VERSION": "1.0.0",
+    'SERVE_INCLUDE_SCHEMA': False,
 }
 
 # Custom user model
