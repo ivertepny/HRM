@@ -28,8 +28,12 @@ INSTALLED_APPS = [
     'rest_framework',
     'drf_spectacular',
     'rest_framework_simplejwt.token_blacklist',
+    # 3rd party apps
+    'storages',
+    # my_apps
     'users',
     'employees',
+
 ]
 
 MIDDLEWARE = [
@@ -67,18 +71,19 @@ WSGI_APPLICATION = 'HRM_NEW.wsgi.application'
 
 IN_DOCKER = os.environ.get("IN_DOCKER", "False").lower() == "true"
 
+# DB Configuration
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.postgresql_psycopg2',
         'NAME': os.environ.get('POSTGRES_DB'),
         'USER': os.environ.get('POSTGRES_USER'),
         'PASSWORD': os.environ.get('POSTGRES_PASSWORD'),
-        'HOST': os.environ.get('POSTGRES_HOST') if IN_DOCKER else 'localhost',
+        # 'HOST': os.environ.get('POSTGRES_HOST') if IN_DOCKER else 'localhost',
+        'HOST': os.environ.get('POSTGRES_HOST'),
         # Use 'db' in Docker, 'localhost' otherwise
         'PORT': os.environ.get('POSTGRES_PORT')
     },
 }
-
 # Password validation
 # https://docs.djangoproject.com/en/5.2/ref/settings/#auth-password-validators
 
@@ -186,3 +191,18 @@ SIMPLE_JWT = {
     "SLIDING_TOKEN_REFRESH_SERIALIZER": "rest_framework_simplejwt.serializers.TokenRefreshSlidingSerializer",
 }
 
+# AWS S3 Configuration
+AWS_STORAGE_BUCKET_NAME = os.environ.get('AWS_STORAGE_BUCKET_NAME')
+AWS_S3_REGION_NAME = os.environ.get('AWS_S3_REGION_NAME')
+AWS_ACCESS_KEY_ID = os.environ.get('AWS_ACCESS_KEY_ID')
+AWS_SECRET_ACCESS_KEY = os.environ.get('AWS_SECRET_ACCESS_KEY')
+
+
+# S3 Storage for static and media files
+STATICFILES_STORAGE = 'forum.storages.StaticStorage'
+DEFAULT_FILE_STORAGE = 'forum.storages.MediaStorage'
+
+# Media files URL
+MEDIA_URL = f'https://{AWS_STORAGE_BUCKET_NAME}.s3.{AWS_S3_REGION_NAME}.amazonaws.com/'
+
+ADMIN_MEDIA_PREFIX = 'static/admin/'
