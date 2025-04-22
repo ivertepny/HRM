@@ -12,5 +12,7 @@ urlpatterns = [
     path('api/users/', include('users.urls')),
 
     path('api/employees/', include('employees.urls')),
+    # company
+    path('api/company/', include('company.urls')),
 
 ]

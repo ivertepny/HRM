@@ -28,8 +28,13 @@ INSTALLED_APPS = [
     'rest_framework',
     'drf_spectacular',
     'rest_framework_simplejwt.token_blacklist',
+    'mptt',
+    'simple_history',
+    # my apps
     'users',
     'employees',
+    'company',
+
 ]
 
 MIDDLEWARE = [
@@ -131,6 +136,18 @@ SPECTACULAR_SETTINGS = {
     "DESCRIPTION": "HR Management System",
     "VERSION": "1.0.0",
     'SERVE_INCLUDE_SCHEMA': False,
+    'SWAGGER_UI_SETTINGS': {
+        'filter': True,
+        'persistAuthorization': True,
+    },
+    'COMPONENT_SPLIT_REQUEST': True,
+    'SCHEMA_PATH_PREFIX': r'/api/',
+    'ENUM_NAME_OVERRIDES': {
+        'CustomTypeEnum': [
+            ('OFFICE', 'Центральний офіс'),
+            ('DEPARTMENT', 'Департамент'),
+        ],
+    },
 }
 
 # Custom user model
@@ -186,3 +203,5 @@ SIMPLE_JWT = {
     "SLIDING_TOKEN_REFRESH_SERIALIZER": "rest_framework_simplejwt.serializers.TokenRefreshSlidingSerializer",
 }
 
+# Для генерації графів (Linux)
+GRAPHVIZ_BIN = '/usr/bin/dot'
