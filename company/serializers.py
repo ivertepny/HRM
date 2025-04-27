@@ -4,12 +4,11 @@ from drf_spectacular.utils import extend_schema_field, inline_serializer
 
 
 class HistorySerializer(serializers.ModelSerializer):
-    history_date = serializers.DateTimeField(read_only=True)
     history_user = serializers.SerializerMethodField()
     changes = serializers.SerializerMethodField()
 
     class Meta:
-        model = StructuralUnit.history.model  # Автоматичне посилання на історичну модель
+        model = StructuralUnit.history.model
         fields = ['history_date', 'history_user', 'changes']
 
     def get_history_user(self, obj):
@@ -17,7 +16,16 @@ class HistorySerializer(serializers.ModelSerializer):
 
     def get_changes(self, obj):
         if obj.prev_record:
-            return obj.diff_against(obj.prev_record).changes
+            changes = obj.diff_against(obj.prev_record).changes
+            # Перетворення ModelChange в словник
+            changes_data = []
+            for change in changes:
+                changes_data.append({
+                    'field': change.field,
+                    'old': change.old,
+                    'new': change.new
+                })
+            return changes_data
         return []
 
 
