@@ -207,3 +207,6 @@ SIMPLE_JWT = {
 
 # Для генерації графів (Linux)
 GRAPHVIZ_BIN = '/usr/bin/dot'
+
+# Максимальна глибина ієрархії підрозділів
+MAX_STRUCTURAL_UNIT_DEPTH = 1000

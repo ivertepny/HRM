@@ -1,6 +1,7 @@
 # views.py
 from rest_framework import viewsets, status
 from rest_framework.decorators import action
+from rest_framework.exceptions import ValidationError
 from rest_framework.permissions import IsAuthenticated, AllowAny
 from rest_framework.response import Response
 from .models import StructuralUnit
@@ -72,6 +73,12 @@ class StructuralUnitViewSet(viewsets.ModelViewSet):
         add_nodes(unit)
         svg_data = graph.pipe()
         return HttpResponse(svg_data, content_type='image/svg+xml')
+
+    def perform_create(self, serializer):
+        try:
+            serializer.save()
+        except ValidationError as e:
+            raise ValidationError(e.message_dict)
 
     def perform_destroy(self, instance):
         instance.delete()

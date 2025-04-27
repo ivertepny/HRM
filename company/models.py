@@ -1,4 +1,5 @@
 from django.db import models
+from django.conf import settings
 from django.core.exceptions import ValidationError
 from mptt.models import MPTTModel, TreeForeignKey
 from simple_history.models import HistoricalRecords
@@ -41,6 +42,10 @@ class StructuralUnit(MPTTModel):
         # Перевірка на циклічність
         if self.parent and self.parent in self.get_descendants():
             raise ValidationError("Спроба створити циклічний зв'язок")
+
+        # Обмеження глибини ієрархії
+        if self.get_level() > settings.MAX_STRUCTURAL_UNIT_DEPTH:
+            raise ValidationError(f"Максимальна глибина ієрархії: {settings.MAX_STRUCTURAL_UNIT_DEPTH} рівнів")
 
     def delete(self, *args, **kwargs):
         """Soft delete з каскадуванням"""

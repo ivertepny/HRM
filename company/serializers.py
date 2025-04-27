@@ -1,3 +1,4 @@
+from django.conf import settings
 from rest_framework import serializers
 from .models import StructuralUnit
 from drf_spectacular.utils import extend_schema_field, inline_serializer
@@ -61,3 +62,12 @@ class StructuralUnitSerializer(serializers.ModelSerializer):
         if value and not value.is_active:
             raise serializers.ValidationError("Не можна додавати до неактивного батька")
         return value
+
+    def validate(self, data):
+        """Додаткова валідація для обмеження глибини ієрархії."""
+        parent = data.get('parent')
+        if parent:
+            level = parent.level + 1
+            if level > settings.MAX_STRUCTURAL_UNIT_DEPTH:
+                raise serializers.ValidationError(f"Максимальна глибина ієрархії: {settings.MAX_STRUCTURAL_UNIT_DEPTH} рівнів")
+        return data
