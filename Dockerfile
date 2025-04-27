@@ -18,6 +18,8 @@ RUN apt-get update && apt-get install --no-install-recommends -y \
 # Upgrade pip
 RUN pip install --upgrade pip
 
+RUN apt-get update && apt-get install -y graphviz
+
 # Copy requirements file and install Python dependencies
 COPY ./requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt

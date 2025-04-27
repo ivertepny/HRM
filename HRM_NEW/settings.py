@@ -30,6 +30,7 @@ INSTALLED_APPS = [
     'rest_framework_simplejwt.token_blacklist',
     'mptt',
     'simple_history',
+    'graphviz',
     # my apps
     'users',
     'employees',

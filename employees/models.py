@@ -32,6 +32,7 @@ class CareerHistory(models.Model):
     date = models.DateField()
     position = models.ForeignKey(Position, on_delete=models.CASCADE)
     salary = models.DecimalField(max_digits=10, decimal_places=2)
+    # history = HistoricalRecords()
 
     class Meta:
         ordering = ['-date']
