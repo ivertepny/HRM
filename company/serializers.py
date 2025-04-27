@@ -1,3 +1,5 @@
+from typing import Optional
+
 from django.conf import settings
 from rest_framework import serializers
 from .models import StructuralUnit
@@ -12,13 +14,14 @@ class HistorySerializer(serializers.ModelSerializer):
         model = StructuralUnit.history.model
         fields = ['history_date', 'history_user', 'changes']
 
-    def get_history_user(self, obj):
+    @extend_schema_field(serializers.CharField(allow_null=True))
+    def get_history_user(self, obj) -> Optional[str]:
         return obj.history_user.username if obj.history_user else "Система"
 
-    def get_changes(self, obj):
+    @extend_schema_field(serializers.ListField())
+    def get_changes(self, obj) -> list:
         if obj.prev_record:
             changes = obj.diff_against(obj.prev_record).changes
-            # Перетворення ModelChange в словник
             changes_data = []
             for change in changes:
                 changes_data.append({
