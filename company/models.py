@@ -26,6 +26,7 @@ class StructuralUnit(MPTTModel):
     )
 
     class MPTTMeta:
+        db_table = 'company_structuralunit'
         order_insertion_by = ['name']
 
     def clean(self):

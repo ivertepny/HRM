@@ -8,7 +8,8 @@ from .models import StructuralUnit
 from .serializers import StructuralUnitSerializer
 from graphviz import Digraph
 from django.http import HttpResponse
-from drf_spectacular.utils import extend_schema, OpenApiParameter, OpenApiExample
+from drf_spectacular.utils import extend_schema, OpenApiParameter
+from drf_spectacular.types import OpenApiTypes
 
 
 class StructuralUnitViewSet(viewsets.ModelViewSet):
@@ -45,12 +46,7 @@ class StructuralUnitViewSet(viewsets.ModelViewSet):
     @extend_schema(
         summary='Згенерувати діаграму',
         responses={
-            200: OpenApiExample(
-                'SVG діаграма',
-                description='Згенерована діаграма у форматі SVG',
-                value='<svg>...</svg>',
-                media_type='image/svg+xml'
-            )
+            200: OpenApiTypes.BINARY
         }
     )
     @action(detail=True, methods=['get'])
