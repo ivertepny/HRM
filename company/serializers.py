@@ -3,13 +3,22 @@ from .models import StructuralUnit
 from drf_spectacular.utils import extend_schema_field, inline_serializer
 
 
-class HistorySerializer(serializers.Serializer):
-    history_date = serializers.DateTimeField()
-    history_user = serializers.CharField(source='history_user.username')
+class HistorySerializer(serializers.ModelSerializer):
+    history_date = serializers.DateTimeField(read_only=True)
+    history_user = serializers.SerializerMethodField()
     changes = serializers.SerializerMethodField()
 
+    class Meta:
+        model = StructuralUnit.history.model  # Автоматичне посилання на історичну модель
+        fields = ['history_date', 'history_user', 'changes']
+
+    def get_history_user(self, obj):
+        return obj.history_user.username if obj.history_user else "Система"
+
     def get_changes(self, obj):
-        return obj.diff_against(obj.prev_record).changes if obj.prev_record else []
+        if obj.prev_record:
+            return obj.diff_against(obj.prev_record).changes
+        return []
 
 
 class StructuralUnitSerializer(serializers.ModelSerializer):

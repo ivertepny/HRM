@@ -1,6 +1,7 @@
 # views.py
 from rest_framework import viewsets, status
 from rest_framework.decorators import action
+from rest_framework.permissions import IsAuthenticated, AllowAny
 from rest_framework.response import Response
 from .models import StructuralUnit
 from .serializers import StructuralUnitSerializer
@@ -12,6 +13,7 @@ from drf_spectacular.utils import extend_schema, OpenApiParameter, OpenApiExampl
 class StructuralUnitViewSet(viewsets.ModelViewSet):
     serializer_class = StructuralUnitSerializer
     queryset = StructuralUnit.objects.filter(is_active=True)
+    permission_classes = [AllowAny]
 
     def get_queryset(self):
         queryset = super().get_queryset()

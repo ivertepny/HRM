@@ -141,6 +141,8 @@ SPECTACULAR_SETTINGS = {
         'persistAuthorization': True,
     },
     'COMPONENT_SPLIT_REQUEST': True,
+    'COMPONENT_NO_READ_ONLY_REQUIRED': True,
+    'SCHEMA_COERCE_PATH_PK': True,
     'SCHEMA_PATH_PREFIX': r'/api/',
     'ENUM_NAME_OVERRIDES': {
         'CustomTypeEnum': [
