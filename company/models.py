@@ -55,5 +55,11 @@ class StructuralUnit(MPTTModel):
         self.save()
         self.get_descendants().update(is_active=False)
 
+    def get_lowest_level_descendants(self):
+        """
+        Повертає всі нащадки, які є на найнижчому рівні в ієрархії.
+        """
+        return self.get_descendants().filter(level=self.get_level() + 1)
+
     def __str__(self):
         return f"{self.custom_type}: {self.name}" if self.custom_type else self.name

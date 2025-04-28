@@ -1,14 +1,10 @@
 from drf_spectacular.utils import extend_schema_field
 from rest_framework import serializers
-from .models import Department, Position, Employee, CareerHistory
+
+from company.models import StructuralUnit
+from .models import Position, Employee, CareerHistory
 from users.models import User
 from users.serializers import UserSerializer  # Assuming it exists
-
-
-class DepartmentSerializer(serializers.ModelSerializer):
-    class Meta:
-        model = Department
-        fields = ['id', 'name']
 
 
 class PositionSerializer(serializers.ModelSerializer):
@@ -28,14 +24,13 @@ class CareerHistorySerializer(serializers.ModelSerializer):
 class EmployeeSerializer(serializers.ModelSerializer):
     # Accept user, department, and position IDs during creation
     user_id = serializers.PrimaryKeyRelatedField(queryset=User.objects.all(), source='user', write_only=True)
-    department_id = serializers.PrimaryKeyRelatedField(queryset=Department.objects.all(), source='department',
-                                                       write_only=True)
+    structural_unit = serializers.PrimaryKeyRelatedField(queryset=StructuralUnit.objects.all()),
     position_id = serializers.PrimaryKeyRelatedField(queryset=Position.objects.all(), source='position',
                                                      write_only=True)
 
     # Human-readable output
     user = serializers.SerializerMethodField()
-    department = DepartmentSerializer(read_only=True)
+    # structural_unit = serializers.PrimaryKeyRelatedField(queryset=StructuralUnit.objects.all(), source='structural_unit')
     position = PositionSerializer(read_only=True)
     career_history = CareerHistorySerializer(many=True, read_only=True)
     date_hired = serializers.DateField(required=False)
@@ -45,7 +40,7 @@ class EmployeeSerializer(serializers.ModelSerializer):
         model = Employee
         fields = [
             'id', 'user', 'user_id',
-            'department', 'department_id',
+            'structural_unit',
             'position', 'position_id',
             'date_hired', 'date_fired', 'career_history'
         ]

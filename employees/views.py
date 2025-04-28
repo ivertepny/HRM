@@ -6,75 +6,16 @@ from django.core.exceptions import ObjectDoesNotExist, ValidationError
 from django.db import IntegrityError, DatabaseError
 from drf_spectacular.utils import extend_schema, extend_schema_view
 
-from .models import Department, Position, Employee, CareerHistory
+from .models import Position, Employee, CareerHistory
 from .serializers import (
-    DepartmentSerializer,
     PositionSerializer,
     EmployeeSerializer,
     CareerHistorySerializer,
 )
 
 import logging
+
 logger = logging.getLogger(__name__)
-
-
-@extend_schema_view(
-    create=extend_schema(
-        summary="Create a new department",
-        description="Adds a new department to the company structure.",
-        responses={
-            201: DepartmentSerializer,
-            400: {"description": "Validation or integrity error"},
-            500: {"description": "Internal server error"},
-        },
-    )
-)
-class DepartmentViewSet(viewsets.ModelViewSet):
-    queryset = Department.objects.all()
-    serializer_class = DepartmentSerializer
-    permission_classes = [AllowAny]
-
-    def create(self, request, *args, **kwargs):
-        try:
-            serializer = self.get_serializer(data=request.data)
-            serializer.is_valid(raise_exception=True)
-            self.perform_create(serializer)
-            return Response(serializer.data, status=status.HTTP_201_CREATED)
-
-        except (IntegrityError, ValidationError, TypeError, ObjectDoesNotExist, DatabaseError) as e:
-            logger.error("Error in Department creation: %s", str(e))
-            return Response(
-                {"error": type(e).__name__, "details": str(e)},
-                status=status.HTTP_400_BAD_REQUEST if isinstance(e, (ValidationError, IntegrityError, TypeError)) else status.HTTP_500_INTERNAL_SERVER_ERROR,
-            )
-
-        except Exception as e:
-            logger.error("Unexpected error: %s", str(e))
-            return Response({"error": "Unexpected error", "details": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
-
-    def update(self, request, *args, **kwargs):
-        try:
-            partial = kwargs.pop('partial', False)
-            instance = self.get_object()
-            serializer = self.get_serializer(instance, data=request.data, partial=partial)
-            serializer.is_valid(raise_exception=True)
-            self.perform_update(serializer)
-            return Response(serializer.data)
-        except Exception as e:
-            logger.error("Error updating Department: %s", str(e))
-            return Response({"error": "Unexpected error", "details": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
-
-    def destroy(self, request, *args, **kwargs):
-        try:
-            instance = self.get_object()
-            self.perform_destroy(instance)
-            return Response(status=status.HTTP_204_NO_CONTENT)
-        except ObjectDoesNotExist as e:
-            logger.error("Department not found: %s", str(e))
-            return Response({"error": "Department not found", "details": str(e)}, status=status.HTTP_404_NOT_FOUND)
-        except Exception as e:
-            logger.error("Error deleting Department: %s", str(e))
-            return Response({"error": "Unexpected error", "details": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 
 @extend_schema_view(
@@ -104,12 +45,14 @@ class PositionViewSet(viewsets.ModelViewSet):
             logger.error("Error in Position creation: %s", str(e))
             return Response(
                 {"error": type(e).__name__, "details": str(e)},
-                status=status.HTTP_400_BAD_REQUEST if isinstance(e, (ValidationError, IntegrityError, TypeError)) else status.HTTP_500_INTERNAL_SERVER_ERROR,
+                status=status.HTTP_400_BAD_REQUEST if isinstance(e, (ValidationError, IntegrityError,
+                                                                     TypeError)) else status.HTTP_500_INTERNAL_SERVER_ERROR,
             )
 
         except Exception as e:
             logger.error("Unexpected error: %s", str(e))
-            return Response({"error": "Unexpected error", "details": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+            return Response({"error": "Unexpected error", "details": str(e)},
+                            status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
     def update(self, request, *args, **kwargs):
         try:
@@ -121,7 +64,8 @@ class PositionViewSet(viewsets.ModelViewSet):
             return Response(serializer.data)
         except Exception as e:
             logger.error("Error updating Position: %s", str(e))
-            return Response({"error": "Unexpected error", "details": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+            return Response({"error": "Unexpected error", "details": str(e)},
+                            status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
     def destroy(self, request, *args, **kwargs):
         try:
@@ -133,11 +77,12 @@ class PositionViewSet(viewsets.ModelViewSet):
             return Response({"error": "Position not found", "details": str(e)}, status=status.HTTP_404_NOT_FOUND)
         except Exception as e:
             logger.error("Error deleting Position: %s", str(e))
-            return Response({"error": "Unexpected error", "details": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+            return Response({"error": "Unexpected error", "details": str(e)},
+                            status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 
 class EmployeeViewSet(viewsets.ModelViewSet):
-    queryset = Employee.objects.select_related('user', 'department', 'position')
+    queryset = Employee.objects.select_related('user', 'structural_unit', 'position')
     serializer_class = EmployeeSerializer
     permission_classes = [AllowAny]
 
@@ -149,7 +94,8 @@ class EmployeeViewSet(viewsets.ModelViewSet):
             return Response(serializer.data, status=status.HTTP_201_CREATED)
         except Exception as e:
             logger.error("Error creating Employee: %s", str(e))
-            return Response({"error": "Unexpected error", "details": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+            return Response({"error": "Unexpected error", "details": str(e)},
+                            status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
     def update(self, request, *args, **kwargs):
         try:
@@ -161,7 +107,8 @@ class EmployeeViewSet(viewsets.ModelViewSet):
             return Response(serializer.data)
         except Exception as e:
             logger.error("Error updating Employee: %s", str(e))
-            return Response({"error": "Unexpected error", "details": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+            return Response({"error": "Unexpected error", "details": str(e)},
+                            status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
     def destroy(self, request, *args, **kwargs):
         try:
@@ -173,7 +120,8 @@ class EmployeeViewSet(viewsets.ModelViewSet):
             return Response({"error": "Employee not found", "details": str(e)}, status=status.HTTP_404_NOT_FOUND)
         except Exception as e:
             logger.error("Error deleting Employee: %s", str(e))
-            return Response({"error": "Unexpected error", "details": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+            return Response({"error": "Unexpected error", "details": str(e)},
+                            status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 
 @extend_schema_view(
@@ -222,11 +170,13 @@ class CareerHistoryViewSet(viewsets.ModelViewSet):
 
         except DatabaseError as e:
             logger.error("Database error: %s", str(e))
-            return Response({"error": "Database error", "details": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+            return Response({"error": "Database error", "details": str(e)},
+                            status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
         except Exception as e:
             logger.error("Unexpected error: %s", str(e))
-            return Response({"error": "Unexpected error", "details": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+            return Response({"error": "Unexpected error", "details": str(e)},
+                            status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
     def update(self, request, *args, **kwargs):
         try:
@@ -238,7 +188,8 @@ class CareerHistoryViewSet(viewsets.ModelViewSet):
             return Response(serializer.data)
         except Exception as e:
             logger.error("Error updating CareerHistory: %s", str(e))
-            return Response({"error": "Unexpected error", "details": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+            return Response({"error": "Unexpected error", "details": str(e)},
+                            status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
     def destroy(self, request, *args, **kwargs):
         try:
@@ -250,4 +201,5 @@ class CareerHistoryViewSet(viewsets.ModelViewSet):
             return Response({"error": "CareerHistory not found", "details": str(e)}, status=status.HTTP_404_NOT_FOUND)
         except Exception as e:
             logger.error("Error deleting CareerHistory: %s", str(e))
-            return Response({"error": "Unexpected error", "details": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+            return Response({"error": "Unexpected error", "details": str(e)},
+                            status=status.HTTP_500_INTERNAL_SERVER_ERROR)
