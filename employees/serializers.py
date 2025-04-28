@@ -1,3 +1,4 @@
+from drf_spectacular.utils import extend_schema_field
 from rest_framework import serializers
 from .models import Department, Position, Employee, CareerHistory
 from users.models import User
@@ -49,5 +50,9 @@ class EmployeeSerializer(serializers.ModelSerializer):
             'date_hired', 'date_fired', 'career_history'
         ]
 
+    # def get_user(self, obj):
+    #     return f"{obj.user.first_name} {obj.user.last_name}"
+
+    @extend_schema_field(UserSerializer)
     def get_user(self, obj):
-        return f"{obj.user.first_name} {obj.user.last_name}"
+        return UserSerializer(obj.user).data

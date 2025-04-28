@@ -2,6 +2,7 @@ from rest_framework import serializers
 from .models import User
 from django.contrib.auth import authenticate
 
+
 class UserSerializer(serializers.ModelSerializer):
     class Meta:
         model = User
@@ -31,3 +32,7 @@ class LoginSerializer(serializers.Serializer):
         if not user.is_active:
             raise serializers.ValidationError("User is inactive")
         return user
+
+
+class LogoutSerializer(serializers.Serializer):
+    detail = serializers.CharField(read_only=True)
