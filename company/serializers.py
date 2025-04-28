@@ -1,5 +1,4 @@
 from typing import Optional
-
 from django.conf import settings
 from rest_framework import serializers
 from .models import StructuralUnit
@@ -34,6 +33,12 @@ class HistorySerializer(serializers.ModelSerializer):
 
 
 class StructuralUnitSerializer(serializers.ModelSerializer):
+    parent = serializers.PrimaryKeyRelatedField(
+        queryset=StructuralUnit.objects.filter(is_active=True),
+        required=False,
+        allow_null=True,
+        help_text="Виберіть ID батьківського підрозділу (дитину, якщо додаєте онука)"
+    )
     history = HistorySerializer(many=True, read_only=True)
     children_count = serializers.IntegerField(read_only=True)
 

@@ -1,4 +1,3 @@
-# views.py
 from rest_framework import viewsets, status
 from rest_framework.decorators import action
 from rest_framework.exceptions import ValidationError
@@ -25,14 +24,12 @@ class StructuralUnitViewSet(viewsets.ModelViewSet):
 
     @extend_schema(
         summary='Отримати історію змін',
-        parameters=[
-            OpenApiParameter(
-                name='limit',
-                type=int,
-                description='Кількість останніх записів',
-                required=False
-            )
-        ]
+        parameters=[OpenApiParameter(
+            name='limit',
+            type=int,
+            description='Кількість останніх записів',
+            required=False
+        )]
     )
     @action(detail=True, methods=['get'])
     def history(self, request, pk=None):
@@ -45,9 +42,7 @@ class StructuralUnitViewSet(viewsets.ModelViewSet):
 
     @extend_schema(
         summary='Згенерувати діаграму',
-        responses={
-            200: OpenApiTypes.BINARY
-        }
+        responses={200: OpenApiTypes.BINARY}
     )
     @action(detail=True, methods=['get'])
     def diagram(self, request, pk=None):
@@ -69,6 +64,30 @@ class StructuralUnitViewSet(viewsets.ModelViewSet):
         add_nodes(unit)
         svg_data = graph.pipe()
         return HttpResponse(svg_data, content_type='image/svg+xml')
+
+    @extend_schema(
+        summary='Отримати дітей певного підрозділу',
+        parameters=[OpenApiParameter(
+            name='parent_id',
+            type=int,
+            description='ID батьківського підрозділу',
+            required=True
+        )]
+    )
+    @action(detail=False, methods=['get'], url_path='children')
+    def children(self, request):
+        parent_id = request.query_params.get('parent_id')
+        if not parent_id:
+            return Response({"detail": "Не вказано parent_id"}, status=400)
+
+        try:
+            parent = StructuralUnit.objects.get(pk=parent_id, is_active=True)
+        except StructuralUnit.DoesNotExist:
+            return Response({"detail": "Підрозділ не знайдено"}, status=404)
+
+        children = parent.children.filter(is_active=True)
+        serializer = self.get_serializer(children, many=True)
+        return Response(serializer.data)
 
     def perform_create(self, serializer):
         try:
