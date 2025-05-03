@@ -6,11 +6,11 @@ from django.core.exceptions import ObjectDoesNotExist, ValidationError
 from django.db import IntegrityError, DatabaseError
 from drf_spectacular.utils import extend_schema, extend_schema_view
 
-from .models import Position, Employee, CareerHistory
+from .models import Position, Employee
 from .serializers import (
     PositionSerializer,
-    EmployeeSerializer,
-    CareerHistorySerializer,
+    EmployeeSerializer
+
 )
 
 import logging
@@ -124,82 +124,82 @@ class EmployeeViewSet(viewsets.ModelViewSet):
                             status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 
-@extend_schema_view(
-    create=extend_schema(
-        summary="Create career history record",
-        description="Adds a new career history entry for an employee.",
-        responses={
-            201: CareerHistorySerializer,
-            400: {"description": "Bad request or validation error"},
-            404: {"description": "Related object not found"},
-            500: {"description": "Internal server error"},
-        },
-    )
-)
-class CareerHistoryViewSet(viewsets.ModelViewSet):
-    queryset = CareerHistory.objects.select_related('employee', 'position')
-    serializer_class = CareerHistorySerializer
-    permission_classes = [AllowAny]
-    filter_backends = [DjangoFilterBackend]
-    filterset_fields = ['employee', 'position', 'date']
-
-    def create(self, request, *args, **kwargs):
-        logger.info("Create CareerHistory request received: %s", request.data)
-        try:
-            serializer = self.get_serializer(data=request.data)
-            serializer.is_valid(raise_exception=True)
-            self.perform_create(serializer)
-            logger.info("CareerHistory created with ID: %s", serializer.instance.id)
-            return Response(serializer.data, status=status.HTTP_201_CREATED)
-
-        except IntegrityError as e:
-            logger.error("Integrity error: %s", str(e))
-            return Response({"error": "Integrity error", "details": str(e)}, status=status.HTTP_400_BAD_REQUEST)
-
-        except ValidationError as e:
-            logger.error("Validation error: %s", str(e))
-            return Response({"error": "Validation error", "details": str(e)}, status=status.HTTP_400_BAD_REQUEST)
-
-        except ObjectDoesNotExist as e:
-            logger.error("Object not found: %s", str(e))
-            return Response({"error": "Object not found", "details": str(e)}, status=status.HTTP_404_NOT_FOUND)
-
-        except TypeError as e:
-            logger.error("Type error: %s", str(e))
-            return Response({"error": "Type error", "details": str(e)}, status=status.HTTP_400_BAD_REQUEST)
-
-        except DatabaseError as e:
-            logger.error("Database error: %s", str(e))
-            return Response({"error": "Database error", "details": str(e)},
-                            status=status.HTTP_500_INTERNAL_SERVER_ERROR)
-
-        except Exception as e:
-            logger.error("Unexpected error: %s", str(e))
-            return Response({"error": "Unexpected error", "details": str(e)},
-                            status=status.HTTP_500_INTERNAL_SERVER_ERROR)
-
-    def update(self, request, *args, **kwargs):
-        try:
-            partial = kwargs.pop('partial', False)
-            instance = self.get_object()
-            serializer = self.get_serializer(instance, data=request.data, partial=partial)
-            serializer.is_valid(raise_exception=True)
-            self.perform_update(serializer)
-            return Response(serializer.data)
-        except Exception as e:
-            logger.error("Error updating CareerHistory: %s", str(e))
-            return Response({"error": "Unexpected error", "details": str(e)},
-                            status=status.HTTP_500_INTERNAL_SERVER_ERROR)
-
-    def destroy(self, request, *args, **kwargs):
-        try:
-            instance = self.get_object()
-            self.perform_destroy(instance)
-            return Response(status=status.HTTP_204_NO_CONTENT)
-        except ObjectDoesNotExist as e:
-            logger.error("CareerHistory not found: %s", str(e))
-            return Response({"error": "CareerHistory not found", "details": str(e)}, status=status.HTTP_404_NOT_FOUND)
-        except Exception as e:
-            logger.error("Error deleting CareerHistory: %s", str(e))
-            return Response({"error": "Unexpected error", "details": str(e)},
-                            status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+# @extend_schema_view(
+#     create=extend_schema(
+#         summary="Create career history record",
+#         description="Adds a new career history entry for an employee.",
+#         responses={
+#             201: CareerHistorySerializer,
+#             400: {"description": "Bad request or validation error"},
+#             404: {"description": "Related object not found"},
+#             500: {"description": "Internal server error"},
+#         },
+#     )
+# )
+# class CareerHistoryViewSet(viewsets.ModelViewSet):
+#     queryset = CareerHistory.objects.select_related('employee', 'position')
+#     serializer_class = CareerHistorySerializer
+#     permission_classes = [AllowAny]
+#     filter_backends = [DjangoFilterBackend]
+#     filterset_fields = ['employee', 'position', 'date']
+#
+#     def create(self, request, *args, **kwargs):
+#         logger.info("Create CareerHistory request received: %s", request.data)
+#         try:
+#             serializer = self.get_serializer(data=request.data)
+#             serializer.is_valid(raise_exception=True)
+#             self.perform_create(serializer)
+#             logger.info("CareerHistory created with ID: %s", serializer.instance.id)
+#             return Response(serializer.data, status=status.HTTP_201_CREATED)
+#
+#         except IntegrityError as e:
+#             logger.error("Integrity error: %s", str(e))
+#             return Response({"error": "Integrity error", "details": str(e)}, status=status.HTTP_400_BAD_REQUEST)
+#
+#         except ValidationError as e:
+#             logger.error("Validation error: %s", str(e))
+#             return Response({"error": "Validation error", "details": str(e)}, status=status.HTTP_400_BAD_REQUEST)
+#
+#         except ObjectDoesNotExist as e:
+#             logger.error("Object not found: %s", str(e))
+#             return Response({"error": "Object not found", "details": str(e)}, status=status.HTTP_404_NOT_FOUND)
+#
+#         except TypeError as e:
+#             logger.error("Type error: %s", str(e))
+#             return Response({"error": "Type error", "details": str(e)}, status=status.HTTP_400_BAD_REQUEST)
+#
+#         except DatabaseError as e:
+#             logger.error("Database error: %s", str(e))
+#             return Response({"error": "Database error", "details": str(e)},
+#                             status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+#
+#         except Exception as e:
+#             logger.error("Unexpected error: %s", str(e))
+#             return Response({"error": "Unexpected error", "details": str(e)},
+#                             status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+#
+#     def update(self, request, *args, **kwargs):
+#         try:
+#             partial = kwargs.pop('partial', False)
+#             instance = self.get_object()
+#             serializer = self.get_serializer(instance, data=request.data, partial=partial)
+#             serializer.is_valid(raise_exception=True)
+#             self.perform_update(serializer)
+#             return Response(serializer.data)
+#         except Exception as e:
+#             logger.error("Error updating CareerHistory: %s", str(e))
+#             return Response({"error": "Unexpected error", "details": str(e)},
+#                             status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+#
+#     def destroy(self, request, *args, **kwargs):
+#         try:
+#             instance = self.get_object()
+#             self.perform_destroy(instance)
+#             return Response(status=status.HTTP_204_NO_CONTENT)
+#         except ObjectDoesNotExist as e:
+#             logger.error("CareerHistory not found: %s", str(e))
+#             return Response({"error": "CareerHistory not found", "details": str(e)}, status=status.HTTP_404_NOT_FOUND)
+#         except Exception as e:
+#             logger.error("Error deleting CareerHistory: %s", str(e))
+#             return Response({"error": "Unexpected error", "details": str(e)},
+#                             status=status.HTTP_500_INTERNAL_SERVER_ERROR)

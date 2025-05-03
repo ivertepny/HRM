@@ -1,4 +1,5 @@
 from django.db import models
+from simple_history.models import HistoricalRecords
 
 from company.models import StructuralUnit
 from users.models import User
@@ -18,20 +19,22 @@ class Employee(models.Model):
     date_hired = models.DateField(null=True, blank=True)
     date_fired = models.DateField(null=True, blank=True)
 
+    history = HistoricalRecords()
+
+    class Meta:
+        ordering = ['user__last_name']
+
     def __str__(self):
         return self.user
 
-
-class CareerHistory(models.Model):
-    employee = models.ForeignKey(Employee, on_delete=models.CASCADE, related_name='career_history')
-    date = models.DateField()
-    position = models.ForeignKey(Position, on_delete=models.CASCADE)
-    salary = models.DecimalField(max_digits=10, decimal_places=2)
-
-    # history = HistoricalRecords()
-
-    class Meta:
-        ordering = ['-date']
-
-    def __str__(self):
-        return f"{self.employee.user} - {self.position} - {self.salary}"
+# class CareerHistory(models.Model):
+#     employee = models.ForeignKey(Employee, on_delete=models.CASCADE, related_name='career_history')
+#     date = models.DateField()
+#     position = models.ForeignKey(Position, on_delete=models.CASCADE)
+#     salary = models.DecimalField(max_digits=10, decimal_places=2)
+#
+#     class Meta:
+#         ordering = ['-date']
+#
+#     def __str__(self):
+#         return f"{self.employee.user} - {self.position} - {self.salary}"

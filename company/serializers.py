@@ -8,10 +8,12 @@ from drf_spectacular.utils import extend_schema_field, inline_serializer
 class HistorySerializer(serializers.ModelSerializer):
     history_user = serializers.SerializerMethodField()
     changes = serializers.SerializerMethodField()
+    ancestors = serializers.SerializerMethodField()
+    event_type = serializers.SerializerMethodField()
 
     class Meta:
         model = StructuralUnit.history.model
-        fields = ['history_date', 'history_user', 'changes']
+        fields = ['history_date', 'history_user', 'history_type', 'event_type', 'changes', 'ancestors']
 
     @extend_schema_field(serializers.CharField(allow_null=True))
     def get_history_user(self, obj) -> Optional[str]:
@@ -21,15 +23,41 @@ class HistorySerializer(serializers.ModelSerializer):
     def get_changes(self, obj) -> list:
         if obj.prev_record:
             changes = obj.diff_against(obj.prev_record).changes
-            changes_data = []
-            for change in changes:
-                changes_data.append({
-                    'field': change.field,
-                    'old': change.old,
-                    'new': change.new
-                })
-            return changes_data
+            return [
+                {'field': change.field, 'old': change.old, 'new': change.new}
+                for change in changes
+            ]
         return []
+
+    @extend_schema_field(serializers.CharField())
+    def get_event_type(self, obj) -> str:
+        return {
+            '+': 'created',
+            '~': 'updated',
+            '-': 'deleted'
+        }.get(obj.history_type, 'unknown')
+
+    @extend_schema_field(
+        inline_serializer(
+            name='AncestorField',
+            fields={
+                'id': serializers.IntegerField(),
+                'name': serializers.CharField(),
+                'type': serializers.CharField()
+            },
+            many=True
+        )
+    )
+    def get_ancestors(self, obj):
+        try:
+            current = StructuralUnit.objects.get(id=obj.id)
+            ancestors = list(current.get_ancestors()) + [current]
+            return [
+                {"id": a.id, "name": a.name, "type": a.custom_type}
+                for a in ancestors
+            ]
+        except StructuralUnit.DoesNotExist:
+            return []
 
 
 class StructuralUnitSerializer(serializers.ModelSerializer):
@@ -54,10 +82,20 @@ class StructuralUnitSerializer(serializers.ModelSerializer):
         )
     )
     def get_ancestors(self, obj):
-        return [
-            {"id": a.id, "name": a.name, "type": a.custom_type}
-            for a in obj.get_ancestors()
-        ]
+        current = None
+
+        # Якщо це історичний об’єкт — пробуємо знайти активний
+        if hasattr(obj, 'instance') and isinstance(obj.instance, StructuralUnit):
+            current = StructuralUnit.objects.filter(id=obj.id).first()
+        elif isinstance(obj, StructuralUnit):
+            current = obj
+
+        if current:
+            return [
+                {"id": a.id, "name": a.name, "type": a.custom_type}
+                for a in current.get_ancestors()
+            ]
+        return []
 
     ancestors = serializers.SerializerMethodField()
 
@@ -77,5 +115,6 @@ class StructuralUnitSerializer(serializers.ModelSerializer):
         if parent:
             level = parent.level + 1
             if level > settings.MAX_STRUCTURAL_UNIT_DEPTH:
-                raise serializers.ValidationError(f"Максимальна глибина ієрархії: {settings.MAX_STRUCTURAL_UNIT_DEPTH} рівнів")
+                raise serializers.ValidationError(
+                    f"Максимальна глибина ієрархії: {settings.MAX_STRUCTURAL_UNIT_DEPTH} рівнів")
         return data
