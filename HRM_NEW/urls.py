@@ -14,5 +14,6 @@ urlpatterns = [
     path('api/employees/', include('employees.urls')),
     # company
     path('api/company/', include('company.urls')),
+    path('api/ai/', include('ai_assistant.urls')),
 
 ]

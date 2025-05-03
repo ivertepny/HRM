@@ -35,6 +35,7 @@ INSTALLED_APPS = [
     'users',
     'employees',
     'company',
+    'ai_assistant',
 
 ]
 
@@ -211,3 +212,6 @@ GRAPHVIZ_BIN = '/usr/bin/dot'
 
 # Максимальна глибина ієрархії підрозділів
 MAX_STRUCTURAL_UNIT_DEPTH = 1000
+
+# AI асистент
+OPENAI_API_KEY= os.getenv('OPENAI_API_KEY')
