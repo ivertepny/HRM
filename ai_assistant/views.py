@@ -4,7 +4,7 @@ from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated, AllowAny
 from rest_framework import status
 
-from drf_spectacular.utils import extend_schema, OpenApiResponse
+from drf_spectacular.utils import extend_schema
 
 from .serializers import ChatRequestSerializer, ChatResponseSerializer, AIQuerySerializer
 from .openai_service import ask_openai
@@ -12,8 +12,7 @@ from .models import AIQuery
 
 
 class ChatAPIView(APIView):
-    # permission_classes = [IsAuthenticated]
-    permission_classes = [AllowAny]
+    permission_classes = [AllowAny]  # Можно поменять на IsAuthenticated, если потребуется
 
     @extend_schema(
         request=ChatRequestSerializer,
@@ -26,15 +25,19 @@ class ChatAPIView(APIView):
         serializer = ChatRequestSerializer(data=request.data)
         if serializer.is_valid():
             user_message = serializer.validated_data["message"]
-            ai_response = ask_openai(user_message)
+            user = request.user if request.user.is_authenticated else None
 
-            AIQuery.objects.create(
-                user=request.user,
-                message=user_message,
-                response=ai_response
-            )
+            ai_response = ask_openai(user_message, user, request.session)
 
-            return Response({"response": ai_response})
+            if user and user.is_authenticated:
+                AIQuery.objects.create(
+                    user=user,
+                    message=user_message,
+                    response=ai_response
+                )
+
+            return Response({"response": ai_response}, status=status.HTTP_200_OK)
+
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 
@@ -51,3 +54,19 @@ class ChatHistoryAPIView(APIView):
         history = AIQuery.objects.filter(user=request.user).order_by('-created_at')
         serializer = AIQuerySerializer(history, many=True)
         return Response(serializer.data)
+
+
+class ChatResetSessionAPIView(APIView):
+    permission_classes = [AllowAny]
+
+    @extend_schema(
+        tags=["AI Assistant"],
+        summary="Сбросить текущую сессию",
+        description="Удаляет историю переписки в пределах текущей сессии."
+    )
+    def post(self, request):
+        if 'last_ai_query_id' in request.session:
+            del request.session['last_ai_query_id']
+            request.session.modified = True
+            return Response({"detail": "Сесія скинута."}, status=status.HTTP_200_OK)
+        return Response({"detail": "Немає активної сесії."}, status=status.HTTP_200_OK)
