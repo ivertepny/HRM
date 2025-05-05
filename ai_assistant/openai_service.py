@@ -7,9 +7,9 @@ client = OpenAI(api_key=settings.OPENAI_API_KEY)
 
 def ask_openai(prompt: str) -> str:
     response = client.chat.completions.create(
-        model="gpt-3.5-turbo",
+        model="gpt-4o-mini",
         messages=[
-            {"role": "system", "content": "Ты HR-ассистент компании. Отвечай кратко и по делу."},
+            {"role": "system", "content": "Ти HR-асистент компанії. Відповідай коротко і по суті справи."},
             {"role": "user", "content": prompt},
         ],
         temperature=0.7,
