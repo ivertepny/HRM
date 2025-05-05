@@ -216,3 +216,4 @@ MAX_STRUCTURAL_UNIT_DEPTH = 1000
 # AI асистент
 OPENAI_API_KEY= os.getenv('OPENAI_API_KEY')
 MAX_TOKENS_INPUT = 1000  # лимит токенов для ввода пользователя
+MAX_HISTORY = 20  # Максимальна кількість збережених пар в сесії
