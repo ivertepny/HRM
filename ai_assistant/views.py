@@ -1,6 +1,9 @@
+# ai_assistant/views.py
+import uuid
+
 from rest_framework.views import APIView
 from rest_framework.response import Response
-from rest_framework.permissions import IsAuthenticated, AllowAny
+from rest_framework.permissions import IsAuthenticated
 from rest_framework import status
 from rest_framework.generics import ListAPIView, RetrieveAPIView, UpdateAPIView
 
@@ -17,7 +20,7 @@ from .models import AIQuery, ChatSession
 
 
 class ChatAPIView(APIView):
-    permission_classes = [AllowAny]
+    permission_classes = [IsAuthenticated]
 
     @extend_schema(
         request=ChatRequestSerializer,
@@ -30,14 +33,34 @@ class ChatAPIView(APIView):
         serializer = ChatRequestSerializer(data=request.data)
         if serializer.is_valid():
             user_message = serializer.validated_data["message"]
-            user = request.user if request.user.is_authenticated else None
+            chat_session_name = serializer.validated_data.get("chat_session_name")
+            user = request.user
+
+            chat_session_id = request.session.get("chat_session_id")
+            chat_session = None
+
+            if chat_session_id:
+                chat_session = ChatSession.objects.filter(session_id=chat_session_id, user=user).first()
+
+            if not chat_session:
+                # Генеруємо унікальний session_id
+                session_id = str(uuid.uuid4())
+                chat_session = ChatSession.objects.create(
+                    user=user,
+                    session_id=session_id,
+                    name=chat_session_name or "Без назви"
+                )
+                request.session["chat_session_id"] = session_id
+                request.session.modified = True
+            elif chat_session_name and not chat_session.name:
+                chat_session.name = chat_session_name
+                chat_session.save()
 
             ai_response = ask_openai(user_message, user, request.session)
 
             return Response({"response": ai_response}, status=status.HTTP_200_OK)
 
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-
 
 class ChatHistoryAPIView(APIView):
     permission_classes = [IsAuthenticated]
@@ -55,20 +78,26 @@ class ChatHistoryAPIView(APIView):
 
 
 class ChatResetSessionAPIView(APIView):
-    permission_classes = [AllowAny]
+    permission_classes = [IsAuthenticated]
 
     @extend_schema(
         tags=["AI Assistant"],
         summary="Скинути поточну сесію",
-        description="Видаляє історію повідомлень у межах поточної сесії."
+        description="Видаляє поточну чат-сесію і створює нову."
     )
     def post(self, request):
-        keys_to_clear = ["chat_session_id"]
+        user = request.user
+
+        # Створення нової сесії
+        new_chat_session = ChatSession.objects.create(user=user, name="Без назви")
+        request.session["chat_session_id"] = new_chat_session.id
+        request.session["chat_history"] = []
         request.session.modified = True
-        for key in keys_to_clear:
-            if key in request.session:
-                del request.session[key]
-        return Response({"detail": "Сесію скинуто."}, status=status.HTTP_200_OK)
+
+        return Response({
+            "detail": "Сесію скинуто. Створено нову.",
+            "new_chat_session_id": new_chat_session.id
+        }, status=status.HTTP_200_OK)
 
 
 class ChatSessionListAPIView(ListAPIView):
@@ -98,7 +127,7 @@ class ChatSessionHistoryAPIView(RetrieveAPIView):
         session = ChatSession.objects.filter(user=request.user, id=session_id).first()
         if not session:
             return Response({"detail": "Сесію не знайдено."}, status=404)
-        messages = AIQuery.objects.filter(chat_session=session).order_by('timestamp')
+        messages = AIQuery.objects.filter(chat_session=session).order_by('created_at')
         serializer = AIQuerySerializer(messages, many=True)
         return Response(serializer.data)
 

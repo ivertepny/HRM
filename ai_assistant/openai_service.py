@@ -1,5 +1,5 @@
-# openai_service.py
-import uuid
+# ai_assistant/openai_service.py
+# import uuid
 
 from openai import OpenAI
 from django.conf import settings
@@ -7,10 +7,10 @@ from .models import AIQuery, ChatSession
 from .utils import count_tokens, build_messages
 
 client = OpenAI(api_key=settings.OPENAI_API_KEY)
-max_tokens = settings.MAX_TOKENS_INPUT_AI  # ліміт токенів для введення
-max_history_length = settings.MAX_HISTORY_AI  # максимальна довжина історії
-model_name = settings.MODEL_NAME_AI  # назва моделі OpenAI
 
+max_tokens = settings.MAX_TOKENS_INPUT_AI  # Ліміт токенів на вхід
+max_history_length = settings.MAX_HISTORY_AI  # Максимальна кількість повідомлень в історії
+model_name = settings.MODEL_NAME_AI  # Назва моделі OpenAI
 
 
 def ask_openai(prompt: str, user, session) -> str:
@@ -27,8 +27,13 @@ def ask_openai(prompt: str, user, session) -> str:
         defaults={"user": user}
     )
 
+    # # Витягуємо історію
+    # chat_history = session.get("chat_history", [])
+    # Збираємо повідомлення для моделі
+    # messages = build_messages(prompt, chat_history)
     messages = build_messages(prompt, session)
 
+    # Запит до OpenAI
     response = client.chat.completions.create(
         model=model_name,
         messages=messages,
@@ -41,13 +46,15 @@ def ask_openai(prompt: str, user, session) -> str:
 
     answer = response.choices[0].message.content
 
-    # Історія
+    # Оновлюємо історію в сесії
+    # Оновлюємо історію в сесії
     chat_history = session.get("chat_history", [])
     chat_history.append({"role": "user", "content": prompt})
     chat_history.append({"role": "assistant", "content": answer})
     session["chat_history"] = chat_history
     session.modified = True
 
+    # Запис у базу даних
     AIQuery.objects.create(
         user=user,
         message=prompt,

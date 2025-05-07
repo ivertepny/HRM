@@ -1,4 +1,4 @@
-# utils.py
+# ai_assistant/utils.py
 import tiktoken
 from typing import List, Dict
 
