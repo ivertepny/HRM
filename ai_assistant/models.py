@@ -1,6 +1,8 @@
 # ai_assistant/models.py
 from django.db import models
 from django.conf import settings
+from django.db.models import JSONField
+
 from users.models import User
 
 
@@ -9,6 +11,7 @@ class ChatSession(models.Model):
     session_id = models.CharField(max_length=100, unique=True)
     name = models.CharField(max_length=255, blank=True, default="")
     created_at = models.DateTimeField(auto_now_add=True)
+    conversation = JSONField(default=list)
 
     def __str__(self):
         return self.name or f"Chat {self.id}"
