@@ -11,7 +11,7 @@ class ChatSession(models.Model):
     session_id = models.CharField(max_length=100, unique=True)
     name = models.CharField(max_length=255, blank=True, default="")
     created_at = models.DateTimeField(auto_now_add=True)
-    conversation = JSONField(default=list)
+    conversation = JSONField(default=list, blank=True)
 
     def __str__(self):
         return self.name or f"Chat {self.id}"
