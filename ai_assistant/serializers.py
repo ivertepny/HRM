@@ -21,6 +21,5 @@ class AIQuerySerializer(serializers.ModelSerializer):
 class ChatSessionSerializer(serializers.ModelSerializer):
     class Meta:
         model = ChatSession
-        fields = ['id', 'session_id', 'user', 'name', 'created_at']
-        read_only_fields = ['id', 'session_id', 'user', 'created_at']
-
+        fields = ['id', 'session_id', 'user', 'name', 'created_at', 'conversation']
+        read_only_fields = ['id', 'session_id', 'user', 'created_at', 'conversation']
