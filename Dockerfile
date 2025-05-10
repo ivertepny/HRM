@@ -1,5 +1,4 @@
-FROM python:3.10
-
+FROM python:3.10-alpine
 
 # Environment variables for Python optimization
 ENV PIP_DISABLE_PIP_VERSION_CHECK=1 \
@@ -13,12 +12,11 @@ WORKDIR /usr/src
 RUN apt-get update && apt-get install --no-install-recommends -y \
     gcc \
     libpq-dev \
+    graphviz \
     && rm -rf /var/lib/apt/lists/*
 
 # Upgrade pip
 RUN pip install --upgrade pip
-
-RUN apt-get update && apt-get install -y graphviz
 
 # Copy requirements file and install Python dependencies
 COPY ./requirements.txt .
@@ -30,5 +28,6 @@ EXPOSE 8000
 # Copy application code
 COPY . .
 
-# Default command to run Django migrations and start the server
-CMD ["sh", "-c", "python manage.py makemigrations && python manage.py migrate && python manage.py runserver 0.0.0.0:8000"]
+# Default entrypoint and command
+ENTRYPOINT ["sh", "-c"]
+CMD ["python manage.py makemigrations && python manage.py migrate && python manage.py runserver 0.0.0.0:8000"]
