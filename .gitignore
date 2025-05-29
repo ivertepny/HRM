@@ -160,4 +160,4 @@ cython_debug/
 .idea/
 .vscode/
 postgres-data/
-shop.log*
+HRM_NEW.log*
