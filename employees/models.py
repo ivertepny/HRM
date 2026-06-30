@@ -25,16 +25,20 @@ class Employee(models.Model):
         ordering = ['user__last_name']
 
     def __str__(self):
-        return self.user
+        return f"{self.user.last_name} {self.user.first_name}"
 
-# class CareerHistory(models.Model):
-#     employee = models.ForeignKey(Employee, on_delete=models.CASCADE, related_name='career_history')
-#     date = models.DateField()
-#     position = models.ForeignKey(Position, on_delete=models.CASCADE)
-#     salary = models.DecimalField(max_digits=10, decimal_places=2)
-#
-#     class Meta:
-#         ordering = ['-date']
-#
-#     def __str__(self):
-#         return f"{self.employee.user} - {self.position} - {self.salary}"
+
+class CareerHistory(models.Model):
+    employee = models.ForeignKey(Employee, on_delete=models.CASCADE, related_name='career_history')
+    date = models.DateField()
+    position = models.ForeignKey(Position, on_delete=models.CASCADE)
+    structural_unit = models.ForeignKey(
+        StructuralUnit, on_delete=models.SET_NULL, null=True, blank=True
+    )
+    salary = models.DecimalField(max_digits=10, decimal_places=2)
+
+    class Meta:
+        ordering = ['-date']
+
+    def __str__(self):
+        return f"{self.employee} — {self.position} — {self.salary}"

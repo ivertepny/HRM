@@ -2,7 +2,7 @@ from drf_spectacular.utils import extend_schema_field
 from rest_framework import serializers
 
 from company.models import StructuralUnit
-from .models import Position, Employee
+from .models import Position, Employee, CareerHistory
 from users.models import User
 from users.serializers import UserSerializer
 
@@ -52,3 +52,23 @@ class EmployeeSerializer(serializers.ModelSerializer):
             'id': unit.id,
             'full_name': ' > '.join(names)
         }
+
+
+class CareerHistorySerializer(serializers.ModelSerializer):
+    position = PositionSerializer(read_only=True)
+    position_id = serializers.PrimaryKeyRelatedField(
+        queryset=Position.objects.all(), source='position', write_only=True
+    )
+    structural_unit_id = serializers.PrimaryKeyRelatedField(
+        queryset=StructuralUnit.objects.all(), source='structural_unit', write_only=True, required=False
+    )
+
+    class Meta:
+        model = CareerHistory
+        fields = [
+            'id', 'employee', 'date',
+            'position', 'position_id',
+            'structural_unit_id',
+            'salary',
+        ]
+

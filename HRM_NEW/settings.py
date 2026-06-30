@@ -36,7 +36,6 @@ INSTALLED_APPS = [
     'employees',
     'company',
     'ai_assistant',
-    'spacy',
 
 ]
 

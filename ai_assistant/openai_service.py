@@ -1,9 +1,12 @@
-import uuid, spacy
-from openai import OpenAI
+import uuid
+
 from django.conf import settings
+from openai import OpenAI
+
+from company.models import StructuralUnit  # Імпорт моделі
+
 from .models import AIQuery, ChatSession
 from .utils import count_tokens, build_messages
-from company.models import StructuralUnit  # Імпорт  моделі
 
 client = OpenAI(api_key=settings.OPENAI_API_KEY)
 
@@ -11,27 +14,21 @@ max_tokens = settings.MAX_TOKENS_INPUT_AI
 max_history_length = settings.MAX_HISTORY_AI
 model_name = settings.MODEL_NAME_AI
 
-# Ініціалізуємо spaCy
-try:
-    nlp = spacy.load("uk_core_news_sm")
-except Exception as e:
-    nlp = None  # Обробка помилок за потреби
-
-# Ключові леми для визначення запитів про структуру
-STRUCTURE_LEMMAS = {
-    "структура", "підрозділ", "відділ", "компанія",
-    "організація", "структурний", "організаційний", "департамент"
-}
+# Ключові підрядки для визначення запитів про структуру компанії
+STRUCTURE_KEYWORDS = [
+    "структур",
+    "підрозділ",
+    "відділ",
+    "департамент",
+    "організац",
+    "компані",
+]
 
 
 def is_structure_query(prompt: str) -> bool:
-    """Використовуємо spaCy для визначення наміру"""
-    if not nlp:
-        return any(kw in prompt.lower() for kw in ["структур", "підрозділ", "відділ"])
-
-    doc = nlp(prompt.lower())
-    found_lemmas = {token.lemma_ for token in doc}
-    return bool(found_lemmas & STRUCTURE_LEMMAS)
+    """Визначає, чи запит стосується організаційної структури компанії."""
+    text = prompt.lower()
+    return any(kw in text for kw in STRUCTURE_KEYWORDS)
 
 
 def get_company_structure_text():
