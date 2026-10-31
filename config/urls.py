@@ -28,6 +28,7 @@ urlpatterns = [
     # company
     path("api/company/", include("apps.company.urls")),
     path("api/ai/", include("apps.ai_assistant.urls")),
+    path("api/access/", include("apps.access.urls")),
 ]
 
 if settings.DEBUG:

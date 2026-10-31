@@ -20,6 +20,7 @@ function Show-Help {
     Write-Host "  .\dev.ps1 check          " -NoNewline; Write-Host "Lint + перевірка форматування" -ForegroundColor Gray
     Write-Host "  .\dev.ps1 migrate        " -NoNewline; Write-Host "python manage.py migrate" -ForegroundColor Gray
     Write-Host "  .\dev.ps1 makemigrations " -NoNewline; Write-Host "python manage.py makemigrations" -ForegroundColor Gray
+    Write-Host "  .\dev.ps1 seed           " -NoNewline; Write-Host "Синхронізувати дозволи і системні ролі" -ForegroundColor Gray
     Write-Host "  .\dev.ps1 run            " -NoNewline; Write-Host "Запустити dev-сервер (0.0.0.0:8000)" -ForegroundColor Gray
     Write-Host "  .\dev.ps1 shell          " -NoNewline; Write-Host "Django shell" -ForegroundColor Gray
     Write-Host "  .\dev.ps1 test           " -NoNewline; Write-Host "Запустити тести" -ForegroundColor Gray
@@ -62,6 +63,10 @@ switch ($Command) {
     "makemigrations" {
         Write-Host "▶ python manage.py makemigrations" -ForegroundColor Cyan
         uv run python manage.py makemigrations
+    }
+    "seed" {
+        Write-Host "▶ python manage.py seed_roles" -ForegroundColor Cyan
+        uv run python manage.py seed_roles
     }
     "run" {
         Write-Host "▶ python manage.py runserver 0.0.0.0:8000" -ForegroundColor Cyan

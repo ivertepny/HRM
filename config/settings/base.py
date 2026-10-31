@@ -36,6 +36,7 @@ INSTALLED_APPS = [
     "apps.employees",
     "apps.company",
     "apps.ai_assistant",
+    "apps.access",
 ]
 
 MIDDLEWARE = [
