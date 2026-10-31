@@ -12,5 +12,8 @@ DEBUG = False
 # Швидкий хешер — суттєво пришвидшує тести з логіном/реєстрацією
 PASSWORD_HASHERS = ["django.contrib.auth.hashers.MD5PasswordHasher"]
 
+# Тести не залежать від Redis; кеш очищується перед кожним тестом (conftest)
+CACHES = {"default": {"BACKEND": "django.core.cache.backends.locmem.LocMemCache"}}
+
 # OpenAI у тестах завжди мокається
 OPENAI_API_KEY = "test-key"

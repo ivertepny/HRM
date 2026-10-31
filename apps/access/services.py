@@ -1,14 +1,18 @@
 """Обчислення прав користувача.
 
 UserAccess завантажує всі активні призначення ролей одним запитом і далі
-відповідає на питання "чи можна" без звернень до БД. Для HTTP-запиту
-використовуйте get_access(request) — результат кешується на час запиту.
+відповідає на питання "чи можна" без звернень до БД. Результат кешується
+між запитами (apps.access.cache, Redis) і на час HTTP-запиту
+(get_access(request)).
 """
 
-from django.db.models import Q
+from django.conf import settings
+from django.db.models import Min, Q
+from django.utils import timezone
 
 from apps.company.models import StructuralUnit
 
+from . import cache as access_cache
 from .catalog import WILDCARD, matches
 from .models import UserRole
 
@@ -26,16 +30,33 @@ class UserAccess:
             self._load()
 
     def _load(self):
-        assignments = (
-            UserRole.objects.active()
-            .filter(user=self.user, role__permissions__isnull=False)
-            .values_list("structural_unit_id", "role__permissions__codename")
+        key = access_cache.key_for(self.user.pk)
+        cached = access_cache.load(key)
+        if cached is None:
+            cached, timeout = self._query()
+            access_cache.store(key, cached, timeout)
+        self.global_permissions, self.scoped_permissions = cached
+
+    def _query(self):
+        """(global, scoped) з БД і TTL для кешу: не довше, ніж до закінчення
+        найближчої тимчасової ролі."""
+        active = UserRole.objects.active().filter(user=self.user)
+        global_permissions, scoped_permissions = set(), {}
+        assignments = active.filter(role__permissions__isnull=False).values_list(
+            "structural_unit_id", "role__permissions__codename"
         )
         for unit_id, codename in assignments:
             if unit_id is None:
-                self.global_permissions.add(codename)
+                global_permissions.add(codename)
             else:
-                self.scoped_permissions.setdefault(unit_id, set()).add(codename)
+                scoped_permissions.setdefault(unit_id, set()).add(codename)
+
+        timeout = settings.ACCESS_CACHE_TIMEOUT
+        next_expiry = active.aggregate(next=Min("expires_at"))["next"]
+        if next_expiry is not None:
+            seconds_left = int((next_expiry - timezone.now()).total_seconds())
+            timeout = min(timeout, seconds_left)
+        return (global_permissions, scoped_permissions), timeout
 
     def has(self, codename, unit=None):
         """Дозвіл глобально або (якщо задано unit) через роль на unit чи його предка."""

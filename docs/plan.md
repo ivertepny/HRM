@@ -7,13 +7,14 @@
 - [x] Тулінг: uv + ruff, Python 3.14, Docker на uv
 - [x] Структура `config/` (settings `base` / `dev` / `prod` / `test`) + `apps/`, міграції з нуля
 - [x] Основа API: пагінація, глобальний обробник помилок, CORS, JWT refresh (access 30 хв), Swagger
-- [x] Тести: pytest + factory_boy (161 тест, ~95%)
+- [x] Тести: pytest + factory_boy (171 тест, ~95%)
 - [x] Ролі та дозволи (`apps/access`): `resource:action` з wildcard-ами, scope на підрозділ, тимчасові ролі, захист від ескалації, `seed_roles` (System Admin / HR Manager / Employee)
 - [x] Дозволи на всіх ендпоінтах; власні дані доступні завжди; зарплата — окремо через `salary:read` / `write`; реєстрація лише через HR
 - [x] Працівник: рівень, зарплата, дата народження, фото, документи; автоматичний кадровий журнал (`CareerHistory`); `PROTECT` замість `CASCADE`
 - [x] Оргструктура: валідація дерева через API, історія змін з автором, SVG-діаграма
 - [x] S3 для файлів у prod — лише через IAM-роль (код готовий, підключення — при деплої)
 - [x] AI-асистент на LangGraph / LangChain (`langchain-openai`): агент з інструментом оргструктури (з урахуванням прав), сесії в БД за `session_id`, ліміт історії, таймаут і 503 при збої LLM
+- [x] Redis-кеш (`CACHES` з `REDIS_URL`, сервіс у docker-compose): права користувача кешуються між запитами, версійна інвалідація при зміні ролей / дозволів, TTL з урахуванням тимчасових ролей, fallback на БД при недоступності Redis
 
 ---
 
@@ -49,7 +50,6 @@
 
 - [ ] gunicorn, Nginx, HTTPS (Let's Encrypt), `SECURE_SSL_REDIRECT`, HSTS, `collectstatic`
 - [ ] S3: приватний бакет + IAM-роль сервера (`GetObject` / `PutObject` / `DeleteObject` на `employees/*`)
-- [ ] Redis-кеш дозволів між запитами
 - [ ] Довгий випадковий `SECRET_KEY`
 
 ## Крок 8 — Документація

@@ -5,3 +5,6 @@ class AccessConfig(AppConfig):
     default_auto_field = "django.db.models.BigAutoField"
     name = "apps.access"
     verbose_name = "Ролі та дозволи"
+
+    def ready(self):
+        from . import signals  # noqa: F401 — підключає інвалідацію кешу прав

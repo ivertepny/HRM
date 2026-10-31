@@ -1,6 +1,7 @@
 import itertools
 
 import pytest
+from django.core.cache import cache
 from django.core.management import call_command
 from rest_framework.test import APIClient
 
@@ -12,6 +13,14 @@ def media_root(settings, tmp_path):
     """Завантажені в тестах файли — у тимчасову теку, а не в media/ проєкту."""
     settings.MEDIA_ROOT = tmp_path / "media"
     return settings.MEDIA_ROOT
+
+
+@pytest.fixture(autouse=True)
+def clear_cache():
+    """Кеш (зокрема прав) не переживає тест."""
+    cache.clear()
+    yield
+    cache.clear()
 
 
 @pytest.fixture

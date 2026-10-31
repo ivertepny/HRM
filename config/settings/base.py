@@ -134,6 +134,23 @@ STORAGES = {
     "staticfiles": {"BACKEND": "django.contrib.staticfiles.storage.StaticFilesStorage"},
 }
 
+# Cache: Redis, якщо задано REDIS_URL; інакше — пам'ять процесу (локальна розробка)
+REDIS_URL = env("REDIS_URL", default="")
+CACHES = {
+    "default": (
+        {
+            "BACKEND": "django.core.cache.backends.redis.RedisCache",
+            "LOCATION": REDIS_URL,
+            "KEY_PREFIX": "hrm",
+            "TIMEOUT": 300,
+        }
+        if REDIS_URL
+        else {"BACKEND": "django.core.cache.backends.locmem.LocMemCache"}
+    )
+}
+# Скільки секунд тримати в кеші обчислені права користувача
+ACCESS_CACHE_TIMEOUT = 300
+
 # Default primary key field type
 # https://docs.djangoproject.com/en/5.2/ref/settings/#default-auto-field
 
