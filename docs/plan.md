@@ -7,7 +7,7 @@
 - [x] Тулінг: uv + ruff, Python 3.14, Docker на uv
 - [x] Структура `config/` (settings `base` / `dev` / `prod` / `test`) + `apps/`, міграції з нуля
 - [x] Основа API: пагінація, глобальний обробник помилок, CORS, JWT refresh (access 30 хв), Swagger
-- [x] Тести: pytest + factory_boy (182 тести, ~95%)
+- [x] Тести: pytest + factory_boy (218 тестів, ~96%)
 - [x] Ролі та дозволи (`apps/access`): `resource:action` з wildcard-ами, scope на підрозділ, тимчасові ролі, захист від ескалації, `seed_roles` (System Admin / HR Manager / Employee)
 - [x] Дозволи на всіх ендпоінтах; власні дані доступні завжди; зарплата — окремо через `salary:read` / `write`; реєстрація лише через HR
 - [x] Працівник: рівень, зарплата, дата народження, фото, документи; автоматичний кадровий журнал (`CareerHistory`); `PROTECT` замість `CASCADE`
@@ -29,13 +29,16 @@
 - [x] Прибрати дублювання `ChatSession.conversation` / `AIQuery`
 - [x] Перевести на LangGraph / LangChain: агент з інструментом `get_company_structure`
 
-## ⏭ Крок 2 — Відпустки (`vacations`)
+## ✅ Крок 2 — Відпустки (`vacations`)
 
-- [ ] `VacationRequest`: `employee`, `date_start`, `date_end`, `status` (`pending` / `approved` / `rejected`), `approved_by`, історія
-- [ ] Валідація дат і перетинів зі схваленими відпустками
-- [ ] Подати заявку за себе (`vacations:write`), схвалити / відхилити (`vacations:manage`, у межах scope)
+- [x] `VacationRequest`: `employee`, `date_start`, `date_end`, `status` (`pending` / `approved` / `rejected` / `cancelled`), `reviewed_by` / `reviewed_at`, коментарі, історія; тип (щорічна / лікарняний / за свій рахунок / інше)
+- [x] Валідація дат і перетинів з активними заявками; щорічна і за свій рахунок — не в минулому; звільнений працівник не подає
+- [x] Подати заявку за себе (`vacations:write`), схвалити / відхилити (`vacations:manage`, у межах scope, не власну)
+- [x] Скасування власником (поки не почалась) або HR; HR може подати заявку за працівника (лікарняний)
+- [x] PostgreSQL exclusion constraint: схвалені періоди одного працівника не перетинаються навіть при гонці
+- [x] Фільтри для календаря: `?date_from` / `?date_to` (перетин з періодом), `status`, `vacation_type`, `employee`
 
-## Крок 3 — Обладнання (`equipment`)
+## ⏭ Крок 3 — Обладнання (`equipment`)
 
 - [ ] `Equipment`: `serial_number` (унікальний), `name`, `description`
 - [ ] `EquipmentAssignment`: `equipment`, `employee`, `date_assigned`, `date_returned`

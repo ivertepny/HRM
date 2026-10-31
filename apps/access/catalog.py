@@ -67,6 +67,8 @@ SYSTEM_ROLES = {
             "documents:*",
             "users:read",
             "company:read",
+            "vacations:read",
+            "vacations:write",
             "vacations:manage",
             "equipment:manage",
             "attendance:read",

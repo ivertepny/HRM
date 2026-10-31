@@ -25,6 +25,7 @@ INSTALLED_APPS = [
     "django.contrib.staticfiles",
     "django.contrib.sites",
     "django.contrib.admin",
+    "django.contrib.postgres",
     "corsheaders",
     "rest_framework",
     "drf_spectacular",
@@ -37,6 +38,7 @@ INSTALLED_APPS = [
     "apps.company",
     "apps.ai_assistant",
     "apps.access",
+    "apps.vacations",
 ]
 
 MIDDLEWARE = [
