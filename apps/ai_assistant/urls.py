@@ -1,28 +1,13 @@
-# ai_assistant/urls.py
 from django.urls import path
+from rest_framework.routers import DefaultRouter
 
-from .views import (
-    ChatAPIView,
-    ChatHistoryAPIView,
-    ChatResetSessionAPIView,
-    ChatSessionHistoryAPIView,
-    ChatSessionListAPIView,
-    ChatSessionRenameAPIView,
-)
+from .views import ChatAPIView, ChatHistoryAPIView, ChatSessionViewSet
+
+router = DefaultRouter()
+router.register(r"chat/sessions", ChatSessionViewSet, basename="chat-session")
 
 urlpatterns = [
     path("chat/", ChatAPIView.as_view(), name="chat"),
     path("chat/history/", ChatHistoryAPIView.as_view(), name="chat-history"),
-    path("chat/reset/", ChatResetSessionAPIView.as_view(), name="chat-reset"),
-    path("chat/sessions/", ChatSessionListAPIView.as_view(), name="chat-session-list"),
-    path(
-        "chat/sessions/<int:pk>/history/",
-        ChatSessionHistoryAPIView.as_view(),
-        name="chat-session-history",
-    ),
-    path(
-        "chat/sessions/<int:pk>/rename/",
-        ChatSessionRenameAPIView.as_view(),
-        name="chat-session-rename",
-    ),
+    *router.urls,
 ]

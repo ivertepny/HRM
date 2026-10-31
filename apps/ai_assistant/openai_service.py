@@ -1,18 +1,22 @@
-import uuid
+"""Логіка асистента: відповіді про оргструктуру з БД, решта — через OpenAI."""
 
+import logging
+from functools import cache
+
+import openai
 from django.conf import settings
-from openai import OpenAI
+from rest_framework.exceptions import ValidationError
 
-from apps.company.models import StructuralUnit  # Імпорт моделі
+from apps.access.services import UserAccess
+from apps.company.models import StructuralUnit
+from apps.core.exceptions import ServiceUnavailable
 
-from .models import AIQuery, ChatSession
-from .utils import build_messages, count_tokens
+from .models import AIQuery
+from .utils import count_tokens
 
-client = OpenAI(api_key=settings.OPENAI_API_KEY)
+logger = logging.getLogger(__name__)
 
-max_tokens = settings.MAX_TOKENS_INPUT_AI
-max_history_length = settings.MAX_HISTORY_AI
-model_name = settings.MODEL_NAME_AI
+SYSTEM_PROMPT = "Ти HR-асистент компанії. Відповідай коротко і по суті справи."
 
 # Ключові підрядки для визначення запитів про структуру компанії
 STRUCTURE_KEYWORDS = [
@@ -20,9 +24,22 @@ STRUCTURE_KEYWORDS = [
     "підрозділ",
     "відділ",
     "департамент",
-    "організац",
-    "компані",
 ]
+
+NO_STRUCTURE_ACCESS = "У вас немає доступу до організаційної структури."
+EMPTY_STRUCTURE = "Структура компанії не знайдена."
+
+
+@cache
+def get_client():
+    """OpenAI-клієнт створюється при першому запиті, а не при імпорті."""
+    if not settings.OPENAI_API_KEY:
+        raise ServiceUnavailable("AI-асистент не налаштований.")
+    return openai.OpenAI(
+        api_key=settings.OPENAI_API_KEY,
+        timeout=settings.OPENAI_TIMEOUT_AI,
+        max_retries=2,
+    )
 
 
 def is_structure_query(prompt: str) -> bool:
@@ -31,77 +48,79 @@ def is_structure_query(prompt: str) -> bool:
     return any(kw in text for kw in STRUCTURE_KEYWORDS)
 
 
-def get_company_structure_text():
-    """Повертає структуру у вигляді тексту з відступами"""
-    units = StructuralUnit.objects.filter(is_active=True, parent=None).order_by("name")
+def get_company_structure_text(access: UserAccess) -> str:
+    """Структура з відступами — лише ті підрозділи, які користувач може бачити."""
+    if not access.has_anywhere("company:read"):
+        return NO_STRUCTURE_ACCESS
 
-    if not units.exists():
-        return "Структура компанії не знайдена."
+    units = StructuralUnit.objects.filter(is_active=True)
+    visible = access.units_for("company:read")
+    if visible is not None:
+        units = units.filter(pk__in=visible)
 
+    depth = {}
     lines = []
+    for unit in units.order_by("tree_id", "lft"):
+        # Видимий підрозділ без видимого батька стає коренем свого піддерева
+        depth[unit.id] = depth[unit.parent_id] + 1 if unit.parent_id in depth else 0
+        prefix = "  " * depth[unit.id]
+        lines.append(f"{prefix}{unit.custom_type or 'Підрозділ'}: {unit.name}")
 
-    def add_unit(unit, level=0):
-        prefix = "  " * level
-        unit_type = unit.custom_type or "Підрозділ"
-        lines.append(f"{prefix}{unit_type}: {unit.name}")
-        for child in unit.children.filter(is_active=True).order_by("name"):
-            add_unit(child, level + 1)
-
-    for root_unit in units:
-        add_unit(root_unit)
-
-    return "\n".join(lines)
+    return "\n".join(lines) or EMPTY_STRUCTURE
 
 
-def ask_openai(prompt: str, user, session) -> str:
-    if is_structure_query(prompt):
-        return get_company_structure_text()
-    else:
-        if count_tokens(prompt) > max_tokens:
-            return "Ваше повідомлення занадто велике. Будь ласка, скоротіть текст."
+def build_messages(session, prompt: str) -> list[dict[str, str]]:
+    """Системний промпт + останні MAX_HISTORY_AI обмінів сесії + нове питання."""
+    history = list(
+        session.queries.filter(source=AIQuery.Source.OPENAI).order_by(
+            "-created_at", "-id"
+        )[: settings.MAX_HISTORY_AI]
+    )
+    messages = [{"role": "system", "content": SYSTEM_PROMPT}]
+    for query in reversed(history):
+        messages.append({"role": "user", "content": query.message})
+        messages.append({"role": "assistant", "content": query.response})
+    messages.append({"role": "user", "content": prompt})
+    return messages
 
-        if "chat_session_id" not in session:
-            session["chat_session_id"] = str(uuid.uuid4())
 
-        chat_session_id = session["chat_session_id"]
-
-        chat_session, _ = ChatSession.objects.get_or_create(
-            session_id=chat_session_id, defaults={"user": user}
-        )
-
-        # Формуємо повідомлення для моделі
-        messages = build_messages(prompt, session)
-
-        # Запит до OpenAI
-        response = client.chat.completions.create(
-            model=model_name,
-            messages=messages,
+def ask_openai(session, prompt: str) -> str:
+    try:
+        response = get_client().chat.completions.create(
+            model=settings.MODEL_NAME_AI,
+            messages=build_messages(session, prompt),
             temperature=0.7,
-            max_completion_tokens=max_tokens,
-            top_p=1,
-            frequency_penalty=0,
-            presence_penalty=0,
+            max_completion_tokens=settings.MAX_TOKENS_OUTPUT_AI,
+        )
+    except openai.OpenAIError as exc:
+        logger.exception("OpenAI request failed")
+        raise ServiceUnavailable(
+            "AI-асистент тимчасово недоступний. Спробуйте пізніше."
+        ) from exc
+    return response.choices[0].message.content or ""
+
+
+def answer(session, prompt: str, access: UserAccess) -> AIQuery:
+    """Відповідає на питання в межах сесії і зберігає обмін."""
+    if count_tokens(prompt) > settings.MAX_TOKENS_INPUT_AI:
+        raise ValidationError(
+            {"message": "Повідомлення занадто велике. Будь ласка, скоротіть текст."}
         )
 
-        answer = response.choices[0].message.content
-
-        # Оновлюємо історію в сесії
-        chat_history = session.get("chat_history", [])
-        chat_history.append({"role": "user", "content": prompt})
-        chat_history.append({"role": "assistant", "content": answer})
-        session["chat_history"] = chat_history
-        session.modified = True
-
-        # ОНОВЛЕННЯ conversation в ChatSession
-        conversation = chat_session.conversation or []
-        conversation.append({"role": "user", "content": prompt})
-        conversation.append({"role": "assistant", "content": answer})
-        chat_session.conversation = conversation
-        chat_session.save(update_fields=["conversation"])
-
-        # Запис у базу даних
-        AIQuery.objects.create(
-            user=user, message=prompt, response=answer, chat_session=chat_session
+    if is_structure_query(prompt):
+        text, source = (
+            get_company_structure_text(access),
+            AIQuery.Source.COMPANY_STRUCTURE,
         )
+    else:
+        text, source = ask_openai(session, prompt), AIQuery.Source.OPENAI
 
-        return answer
+    query = AIQuery.objects.create(
+        user=session.user,
+        chat_session=session,
+        message=prompt,
+        response=text,
+        source=source,
+    )
+    session.save(update_fields=["updated_at"])
+    return query

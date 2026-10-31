@@ -7,25 +7,17 @@
 - [x] Тулінг: uv + ruff, Python 3.14, Docker на uv
 - [x] Структура `config/` (settings `base` / `dev` / `prod` / `test`) + `apps/`, міграції з нуля
 - [x] Основа API: пагінація, глобальний обробник помилок, CORS, JWT refresh (access 30 хв), Swagger
-- [x] Тести: pytest + factory_boy (143 тести, ~93%)
+- [x] Тести: pytest + factory_boy (161 тест, ~95%)
 - [x] Ролі та дозволи (`apps/access`): `resource:action` з wildcard-ами, scope на підрозділ, тимчасові ролі, захист від ескалації, `seed_roles` (System Admin / HR Manager / Employee)
 - [x] Дозволи на всіх ендпоінтах; власні дані доступні завжди; зарплата — окремо через `salary:read` / `write`; реєстрація лише через HR
 - [x] Працівник: рівень, зарплата, дата народження, фото, документи; автоматичний кадровий журнал (`CareerHistory`); `PROTECT` замість `CASCADE`
 - [x] Оргструктура: валідація дерева через API, історія змін з автором, SVG-діаграма
 - [x] S3 для файлів у prod — лише через IAM-роль (код готовий, підключення — при деплої)
+- [x] AI-асистент: сесії в БД за `session_id` (працює з JWT-клієнтами), ліміт історії, лінивий OpenAI-клієнт з таймаутом і 503 при збої, оргструктура з урахуванням прав
 
 ---
 
-## ⏭ Крок 1 — Рефакторинг AI-асистента
-
-- [ ] Сесії чату в БД за `session_id` з запиту, а не в cookie-сесії (не працює з JWT-клієнтами)
-- [ ] Виправити `chat/reset` (другий виклик падає з `IntegrityError`)
-- [ ] Обмежити історію (`MAX_HISTORY_AI`)
-- [ ] OpenAI-клієнт ліниво; таймаути, 503 при збої API
-- [ ] Відповідь про структуру — з урахуванням `company:read` і scope
-- [ ] Прибрати дублювання `ChatSession.conversation` / `AIQuery`
-
-## Крок 2 — Відпустки (`vacations`)
+## ⏭ Крок 2 — Відпустки (`vacations`)
 
 - [ ] `VacationRequest`: `employee`, `date_start`, `date_end`, `status` (`pending` / `approved` / `rejected`), `approved_by`, історія
 - [ ] Валідація дат і перетинів зі схваленими відпустками

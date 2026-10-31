@@ -30,3 +30,11 @@ def exception_handler(exc, context):
             status=status.HTTP_409_CONFLICT,
         )
     return drf_exception_handler(exc, context)
+
+
+class ServiceUnavailable(exceptions.APIException):
+    """Зовнішній сервіс (OpenAI, email тощо) недоступний — 503, а не 500."""
+
+    status_code = status.HTTP_503_SERVICE_UNAVAILABLE
+    default_detail = "Сервіс тимчасово недоступний. Спробуйте пізніше."
+    default_code = "service_unavailable"

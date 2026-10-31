@@ -196,5 +196,7 @@ MAX_STRUCTURAL_UNIT_DEPTH = 1000
 # AI асистент
 OPENAI_API_KEY = env("OPENAI_API_KEY", default="")
 MODEL_NAME_AI = "gpt-4o-mini"  # Назва моделі OpenAI
-MAX_TOKENS_INPUT_AI = 1000  # лимит токенов для ввода пользователя
-MAX_HISTORY_AI = 20  # Максимальна кількість збережених пар в сесії
+MAX_TOKENS_INPUT_AI = 1000  # Ліміт токенів у повідомленні користувача
+MAX_TOKENS_OUTPUT_AI = 1000  # Ліміт токенів у відповіді моделі
+MAX_HISTORY_AI = 20  # Скільки останніх обмінів сесії передавати моделі
+OPENAI_TIMEOUT_AI = 30  # Секунд на запит до OpenAI
