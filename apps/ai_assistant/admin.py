@@ -6,7 +6,7 @@ from .models import AIQuery, ChatSession
 class AIQueryInline(admin.TabularInline):
     model = AIQuery
     extra = 0
-    fields = ("created_at", "source", "message", "response")
+    fields = ("created_at", "message", "response", "tools_used")
     readonly_fields = fields
     can_delete = False
 

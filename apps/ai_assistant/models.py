@@ -26,19 +26,14 @@ class ChatSession(models.Model):
 class AIQuery(models.Model):
     """Один обмін у розмові: питання користувача і відповідь асистента."""
 
-    class Source(models.TextChoices):
-        OPENAI = "openai", "OpenAI"
-        COMPANY_STRUCTURE = "company_structure", "Оргструктура з БД"
-
     user = models.ForeignKey(User, on_delete=models.CASCADE, related_name="ai_queries")
     chat_session = models.ForeignKey(
         ChatSession, on_delete=models.CASCADE, related_name="queries"
     )
     message = models.TextField()
     response = models.TextField()
-    source = models.CharField(
-        max_length=30, choices=Source.choices, default=Source.OPENAI
-    )
+    # Інструменти агента, викликані під час відповіді (напр. get_company_structure)
+    tools_used = models.JSONField(default=list, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:

@@ -1,62 +1,81 @@
 import uuid
-from types import SimpleNamespace
-from unittest.mock import MagicMock, patch
+from unittest.mock import patch
 
 import openai
 import pytest
+from langchain_core.language_models.chat_models import BaseChatModel
+from langchain_core.messages import AIMessage, SystemMessage, ToolMessage
+from langchain_core.outputs import ChatGeneration, ChatResult
+from pydantic import Field
 
-from apps.ai_assistant import openai_service
+from apps.access.services import UserAccess
+from apps.ai_assistant import agent
 from apps.ai_assistant.models import AIQuery, ChatSession
-from apps.ai_assistant.openai_service import is_structure_query
 from apps.company.tests.factories import StructuralUnitFactory
 
 CHAT_URL = "/api/ai/chat/"
 
 
-def fake_completion(content):
-    return SimpleNamespace(
-        choices=[SimpleNamespace(message=SimpleNamespace(content=content))]
+def structure_call(n=1):
+    """Відповідь моделі з викликом інструмента (новий об'єкт щоразу: LangGraph
+    дедуплікує повідомлення за id)."""
+    return AIMessage(
+        "",
+        tool_calls=[{"name": "get_company_structure", "args": {}, "id": f"call_{n}"}],
     )
+
+
+class ScriptedChatModel(BaseChatModel):
+    """Фейкова LLM: віддає кроки зі script (текст, AIMessage або виняток)
+    і запам'ятовує вхідні повідомлення кожного виклику."""
+
+    script: list = Field(default_factory=list)
+    calls: list = Field(default_factory=list)
+    bound_tools: list = Field(default_factory=list)
+
+    @property
+    def _llm_type(self):
+        return "scripted"
+
+    def bind_tools(self, tools, **kwargs):
+        self.bound_tools = [t.name for t in tools]
+        return self
+
+    def say(self, *steps):
+        self.script.extend(steps)
+
+    def _generate(self, messages, stop=None, run_manager=None, **kwargs):
+        self.calls.append(list(messages))
+        step = self.script.pop(0) if self.script else "Відповідь"
+        if isinstance(step, Exception):
+            raise step
+        message = AIMessage(step) if isinstance(step, str) else step
+        return ChatResult(generations=[ChatGeneration(message=message)])
 
 
 @pytest.fixture
 def llm():
-    """Мок OpenAI-клієнта; llm.reply("...") задає відповідь моделі."""
-    client = MagicMock()
-    client.reply = lambda text: setattr(
-        client.chat.completions.create, "return_value", fake_completion(text)
-    )
-    client.reply("Відповідь")
-    with patch.object(openai_service, "get_client", return_value=client):
-        yield client
+    model = ScriptedChatModel()
+    with patch.object(agent, "get_llm", return_value=model):
+        yield model
 
 
-def sent_messages(llm):
-    return llm.chat.completions.create.call_args.kwargs["messages"]
+def contents(messages):
+    return [m.content for m in messages]
 
 
 def ask(client, message, **extra):
     return client.post(CHAT_URL, {"message": message, **extra}, format="json")
 
 
-@pytest.mark.parametrize(
-    ("prompt", "expected"),
-    [
-        ("Покажи структуру компанії", True),
-        ("Який відділ займається продажами?", True),
-        ("Скільки днів відпустки мені належить у компанії?", False),
-    ],
-)
-def test_is_structure_query(prompt, expected):
-    assert is_structure_query(prompt) is expected
+pytestmark = pytest.mark.django_db
 
 
 # --- розмова -------------------------------------------------------------------
 
 
-@pytest.mark.django_db
 def test_first_message_creates_session(auth_client, admin_user, llm):
-    llm.reply("24 дні")
+    llm.say("24 дні")
 
     response = ask(
         auth_client, "Скільки днів відпустки?", chat_session_name="Відпустки"
@@ -69,40 +88,45 @@ def test_first_message_creates_session(auth_client, admin_user, llm):
     assert body["response"] == "24 дні"
     assert session.name == "Відпустки"
     query = AIQuery.objects.get(chat_session=session)
-    assert (query.message, query.response, query.source) == (
+    assert (query.message, query.response, query.tools_used) == (
         "Скільки днів відпустки?",
         "24 дні",
-        "openai",
+        [],
     )
 
 
-@pytest.mark.django_db
+def test_agent_gets_system_prompt_and_tools(auth_client, llm):
+    ask(auth_client, "Привіт")
+
+    first = llm.calls[0][0]
+    assert isinstance(first, SystemMessage)
+    assert first.content == agent.SYSTEM_PROMPT
+    assert llm.bound_tools == ["get_company_structure"]
+
+
 def test_session_id_continues_conversation_with_history(auth_client, llm):
-    llm.reply("Перша відповідь")
+    llm.say("Перша відповідь", "Друга відповідь")
     session_id = ask(auth_client, "Перше питання").json()["session_id"]
 
-    llm.reply("Друга відповідь")
     response = ask(auth_client, "Друге питання", session_id=session_id)
 
     assert response.json()["session_id"] == session_id
     assert ChatSession.objects.count() == 1
-    assert [m["content"] for m in sent_messages(llm)[1:]] == [
+    assert contents(llm.calls[-1][1:]) == [
         "Перше питання",
         "Перша відповідь",
         "Друге питання",
     ]
 
 
-@pytest.mark.django_db
 def test_without_session_id_each_message_starts_new_session(auth_client, llm):
     ask(auth_client, "Раз")
     ask(auth_client, "Два")
 
     assert ChatSession.objects.count() == 2
-    assert len(sent_messages(llm)) == 2  # system + питання, без чужої історії
+    assert contents(llm.calls[-1][1:]) == ["Два"]
 
 
-@pytest.mark.django_db
 def test_history_is_limited_to_max_history(auth_client, llm, settings):
     settings.MAX_HISTORY_AI = 2
     session_id = ask(auth_client, "q1").json()["session_id"]
@@ -111,21 +135,10 @@ def test_history_is_limited_to_max_history(auth_client, llm, settings):
 
     ask(auth_client, "q4", session_id=session_id)
 
-    user_messages = [m["content"] for m in sent_messages(llm) if m["role"] == "user"]
-    assert user_messages == ["q2", "q3", "q4"]
+    user_turns = [m.content for m in llm.calls[-1] if m.type == "human"]
+    assert user_turns == ["q2", "q3", "q4"]
 
 
-@pytest.mark.django_db
-def test_structure_answers_are_not_sent_to_model_as_history(auth_client, llm):
-    StructuralUnitFactory(name="HQ")
-    session_id = ask(auth_client, "Покажи структуру").json()["session_id"]
-
-    ask(auth_client, "Дякую", session_id=session_id)
-
-    assert [m["content"] for m in sent_messages(llm)[1:]] == ["Дякую"]
-
-
-@pytest.mark.django_db
 def test_foreign_session_id_returns_404(client_as, auth_client, user, grant, llm):
     foreign = ask(auth_client, "Моє").json()["session_id"]
     grant(user, "ai:use")
@@ -135,12 +148,10 @@ def test_foreign_session_id_returns_404(client_as, auth_client, user, grant, llm
     assert response.status_code == 404
 
 
-@pytest.mark.django_db
 def test_unknown_session_id_returns_404(auth_client, llm):
     assert ask(auth_client, "Привіт", session_id=str(uuid.uuid4())).status_code == 404
 
 
-@pytest.mark.django_db
 def test_too_long_message_returns_400_without_calling_model(auth_client, llm, settings):
     settings.MAX_TOKENS_INPUT_AI = 3
 
@@ -148,13 +159,15 @@ def test_too_long_message_returns_400_without_calling_model(auth_client, llm, se
 
     assert response.status_code == 400
     assert "message" in response.json()
-    llm.chat.completions.create.assert_not_called()
+    assert llm.calls == []
     assert not AIQuery.objects.exists()
 
 
-@pytest.mark.django_db
-def test_openai_failure_returns_503_and_stores_nothing(auth_client, llm):
-    llm.chat.completions.create.side_effect = openai.OpenAIError("boom")
+# --- збої ---------------------------------------------------------------------
+
+
+def test_llm_failure_returns_503_and_stores_nothing(auth_client, llm):
+    llm.say(openai.OpenAIError("boom"))
 
     response = ask(auth_client, "Привіт")
 
@@ -163,61 +176,89 @@ def test_openai_failure_returns_503_and_stores_nothing(auth_client, llm):
     assert not AIQuery.objects.exists()
 
 
-@pytest.mark.django_db
+def test_endless_tool_loop_is_cut_by_recursion_limit(auth_client, llm, settings):
+    settings.AI_RECURSION_LIMIT = 4
+    llm.say(*(structure_call(n) for n in range(10)))
+
+    response = ask(auth_client, "Структура?")
+
+    assert response.status_code == 503
+    assert not AIQuery.objects.exists()
+
+
 def test_missing_api_key_returns_503(auth_client, settings):
     settings.OPENAI_API_KEY = ""
-    openai_service.get_client.cache_clear()
+    agent.get_llm.cache_clear()
     try:
         response = ask(auth_client, "Привіт")
     finally:
-        openai_service.get_client.cache_clear()
+        agent.get_llm.cache_clear()
 
     assert response.status_code == 503
 
 
-# --- оргструктура -------------------------------------------------------------
+# --- інструмент оргструктури --------------------------------------------------
 
 
-@pytest.mark.django_db
-def test_structure_question_is_answered_from_db_without_openai(auth_client, llm):
+def tool_result(llm):
+    """Що інструмент повернув моделі (ToolMessage у другому виклику LLM)."""
+    return next(m.content for m in llm.calls[1] if isinstance(m, ToolMessage))
+
+
+def test_agent_answers_structure_question_via_tool(auth_client, llm):
     root = StructuralUnitFactory(name="HQ", custom_type="Офіс")
     StructuralUnitFactory(name="IT", custom_type="Департамент", parent=root)
+    llm.say(structure_call(), "У компанії є офіс HQ з департаментом IT.")
 
     response = ask(auth_client, "Яка структура компанії?")
 
-    assert response.json()["response"] == "Офіс: HQ\n  Департамент: IT"
-    assert response.json()["query"]["source"] == "company_structure"
-    llm.chat.completions.create.assert_not_called()
+    assert response.json()["response"] == "У компанії є офіс HQ з департаментом IT."
+    assert response.json()["query"]["tools_used"] == ["get_company_structure"]
+    assert tool_result(llm) == "Офіс: HQ\n  Департамент: IT"
 
 
-@pytest.mark.django_db
-def test_structure_respects_scope(client_as, user, grant, llm):
+def test_structure_tool_respects_scope(client_as, user, grant, llm):
     root = StructuralUnitFactory(name="HQ", custom_type="Офіс")
     it = StructuralUnitFactory(name="IT", custom_type="Департамент", parent=root)
     StructuralUnitFactory(name="Backend", custom_type="Команда", parent=it)
     StructuralUnitFactory(name="Sales", custom_type="Департамент", parent=root)
     grant(user, "ai:use")
     grant(user, "company:read", unit=it)
+    llm.say(structure_call(), "Готово")
 
-    response = ask(client_as(user), "Покажи структуру")
+    ask(client_as(user), "Покажи структуру")
 
-    assert response.json()["response"] == "Департамент: IT\n  Команда: Backend"
+    assert tool_result(llm) == "Департамент: IT\n  Команда: Backend"
 
 
-@pytest.mark.django_db
-def test_structure_requires_company_read(client_as, user, grant, llm):
+def test_structure_tool_without_company_read(client_as, user, grant, llm):
     StructuralUnitFactory(name="HQ")
     grant(user, "ai:use")
+    llm.say(structure_call(), "Немає доступу")
 
-    response = ask(client_as(user), "Покажи структуру")
+    ask(client_as(user), "Покажи структуру")
 
-    assert response.json()["response"] == openai_service.NO_STRUCTURE_ACCESS
+    assert tool_result(llm) == agent.NO_STRUCTURE_ACCESS
+
+
+def test_company_structure_text_for_empty_company(admin_user):
+    assert agent.company_structure_text(UserAccess(admin_user)) == agent.EMPTY_STRUCTURE
+
+
+def test_tool_answers_are_not_replayed_as_history(auth_client, llm):
+    StructuralUnitFactory(name="HQ")
+    llm.say(structure_call(), "Є HQ", "Будь ласка")
+    session_id = ask(auth_client, "Структура?").json()["session_id"]
+
+    ask(auth_client, "Дякую", session_id=session_id)
+
+    # В історії — лише питання і фінальна відповідь, без проміжних tool-повідомлень
+    assert contents(llm.calls[-1][1:]) == ["Структура?", "Є HQ", "Дякую"]
 
 
 # --- сесії та історія ---------------------------------------------------------
 
 
-@pytest.mark.django_db
 def test_sessions_list_shows_only_own_with_counts(
     client_as, auth_client, user, grant, llm
 ):
@@ -233,7 +274,6 @@ def test_sessions_list_shows_only_own_with_counts(
     ]
 
 
-@pytest.mark.django_db
 def test_session_messages_in_chronological_order(auth_client, llm):
     session_id = ask(auth_client, "Раз").json()["session_id"]
     ask(auth_client, "Два", session_id=session_id)
@@ -243,7 +283,6 @@ def test_session_messages_in_chronological_order(auth_client, llm):
     assert [m["message"] for m in response.json()["results"]] == ["Раз", "Два"]
 
 
-@pytest.mark.django_db
 def test_rename_session_with_patch_only(auth_client, llm):
     session_id = ask(auth_client, "Раз").json()["session_id"]
     url = f"/api/ai/chat/sessions/{session_id}/"
@@ -255,7 +294,6 @@ def test_rename_session_with_patch_only(auth_client, llm):
     assert auth_client.put(url, {"name": "X"}, format="json").status_code == 405
 
 
-@pytest.mark.django_db
 def test_delete_session_removes_messages(auth_client, llm):
     session_id = ask(auth_client, "Раз").json()["session_id"]
 
@@ -265,7 +303,6 @@ def test_delete_session_removes_messages(auth_client, llm):
     assert not AIQuery.objects.exists()
 
 
-@pytest.mark.django_db
 def test_other_users_session_is_invisible(client_as, auth_client, user, grant, llm):
     session_id = ask(auth_client, "Моє").json()["session_id"]
     grant(user, "ai:use")
@@ -275,7 +312,6 @@ def test_other_users_session_is_invisible(client_as, auth_client, user, grant, l
     assert client.delete(f"/api/ai/chat/sessions/{session_id}/").status_code == 404
 
 
-@pytest.mark.django_db
 def test_chat_history_lists_own_queries_newest_first(
     client_as, auth_client, user, grant, llm
 ):
@@ -289,7 +325,6 @@ def test_chat_history_lists_own_queries_newest_first(
     assert [q["message"] for q in results] == ["Друге", "Перше"]
 
 
-@pytest.mark.django_db
 @pytest.mark.parametrize(
     ("method", "url"),
     [

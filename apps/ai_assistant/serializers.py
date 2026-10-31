@@ -19,7 +19,7 @@ class AIQuerySerializer(serializers.ModelSerializer):
 
     class Meta:
         model = AIQuery
-        fields = ["id", "session_id", "message", "response", "source", "created_at"]
+        fields = ["id", "session_id", "message", "response", "tools_used", "created_at"]
 
 
 class ChatResponseSerializer(serializers.Serializer):

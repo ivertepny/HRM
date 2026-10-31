@@ -10,13 +10,13 @@ from apps.access.permissions import HasPermission
 from apps.access.services import get_access
 
 from .models import AIQuery, ChatSession
-from .openai_service import answer
 from .serializers import (
     AIQuerySerializer,
     ChatRequestSerializer,
     ChatResponseSerializer,
     ChatSessionSerializer,
 )
+from .services import answer
 
 AI_PERMISSIONS = {"*": "ai:use"}
 
@@ -32,8 +32,9 @@ class ChatAPIView(APIView):
         summary="Надіслати питання AI-асистенту",
         description=(
             "Без session_id створює нову розмову; з ним — продовжує наявну "
-            "(контекст — останні MAX_HISTORY_AI обмінів). 503 — якщо OpenAI "
-            "недоступний."
+            "(контекст — останні MAX_HISTORY_AI обмінів). Відповідає "
+            "LangGraph-агент; оргструктуру бере інструментом з урахуванням "
+            "прав. 503 — якщо LLM недоступна."
         ),
     )
     def post(self, request):
