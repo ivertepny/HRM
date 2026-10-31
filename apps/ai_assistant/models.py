@@ -3,7 +3,7 @@ from django.conf import settings
 from django.db import models
 from django.db.models import JSONField
 
-from users.models import User
+from apps.users.models import User
 
 
 class ChatSession(models.Model):

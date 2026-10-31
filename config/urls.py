@@ -21,9 +21,9 @@ urlpatterns = [
         name="redoc",
     ),
     # users
-    path("api/users/", include("users.urls")),
-    path("api/employees/", include("employees.urls")),
+    path("api/users/", include("apps.users.urls")),
+    path("api/employees/", include("apps.employees.urls")),
     # company
-    path("api/company/", include("company.urls")),
-    path("api/ai/", include("ai_assistant.urls")),
+    path("api/company/", include("apps.company.urls")),
+    path("api/ai/", include("apps.ai_assistant.urls")),
 ]

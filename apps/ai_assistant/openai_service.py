@@ -3,7 +3,7 @@ import uuid
 from django.conf import settings
 from openai import OpenAI
 
-from company.models import StructuralUnit  # Імпорт моделі
+from apps.company.models import StructuralUnit  # Імпорт моделі
 
 from .models import AIQuery, ChatSession
 from .utils import build_messages, count_tokens

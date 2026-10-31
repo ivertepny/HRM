@@ -1,9 +1,9 @@
 from drf_spectacular.utils import extend_schema_field
 from rest_framework import serializers
 
-from company.models import StructuralUnit
-from users.models import User
-from users.serializers import UserSerializer
+from apps.company.models import StructuralUnit
+from apps.users.models import User
+from apps.users.serializers import UserSerializer
 
 from .models import CareerHistory, Employee, Position
 

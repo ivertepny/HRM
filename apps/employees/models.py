@@ -1,8 +1,8 @@
 from django.db import models
 from simple_history.models import HistoricalRecords
 
-from company.models import StructuralUnit
-from users.models import User
+from apps.company.models import StructuralUnit
+from apps.users.models import User
 
 
 class Position(models.Model):
