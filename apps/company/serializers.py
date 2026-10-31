@@ -24,7 +24,7 @@ class HistorySerializer(serializers.ModelSerializer):
 
     @extend_schema_field(serializers.CharField(allow_null=True))
     def get_history_user(self, obj) -> str | None:
-        return obj.history_user.username if obj.history_user else "Система"
+        return obj.history_user.email if obj.history_user else "Система"
 
     @extend_schema_field(serializers.ListField())
     def get_changes(self, obj) -> list:

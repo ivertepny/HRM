@@ -70,7 +70,7 @@ class LogoutView(APIView):
 
 
 class UserListView(generics.ListAPIView):
-    queryset = User.objects.all()
+    queryset = User.objects.order_by("id")
     serializer_class = UserSerializer
     permission_classes = [IsAuthenticated]
 

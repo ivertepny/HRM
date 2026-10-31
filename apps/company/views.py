@@ -4,7 +4,6 @@ from drf_spectacular.utils import OpenApiParameter, extend_schema
 from graphviz import Digraph
 from rest_framework import viewsets
 from rest_framework.decorators import action
-from rest_framework.exceptions import ValidationError
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 
@@ -90,12 +89,6 @@ class StructuralUnitViewSet(viewsets.ModelViewSet):
         children = parent.children.filter(is_active=True)
         serializer = self.get_serializer(children, many=True)
         return Response(serializer.data)
-
-    def perform_create(self, serializer):
-        try:
-            serializer.save()
-        except ValidationError as e:
-            raise ValidationError(e.message_dict)
 
     def perform_destroy(self, instance):
         instance.delete()
