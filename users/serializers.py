@@ -1,13 +1,23 @@
-from rest_framework import serializers
-from .models import User
 from django.contrib.auth import authenticate
+from rest_framework import serializers
+
+from .models import User
 
 
 class UserSerializer(serializers.ModelSerializer):
     class Meta:
         model = User
-        fields = ['id', 'email', 'first_name', 'last_name', 'status',
-                  'is_email_confirmed', 'created_at', 'updated_at', 'last_login']
+        fields = [
+            "id",
+            "email",
+            "first_name",
+            "last_name",
+            "status",
+            "is_email_confirmed",
+            "created_at",
+            "updated_at",
+            "last_login",
+        ]
 
 
 class RegisterSerializer(serializers.ModelSerializer):
@@ -15,7 +25,7 @@ class RegisterSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = User
-        fields = ['email', 'first_name', 'last_name', 'password']
+        fields = ["email", "first_name", "last_name", "password"]
 
     def create(self, validated_data):
         return User.objects.create_user(**validated_data)
@@ -26,7 +36,7 @@ class LoginSerializer(serializers.Serializer):
     password = serializers.CharField(write_only=True)
 
     def validate(self, data):
-        user = authenticate(email=data['email'], password=data['password'])
+        user = authenticate(email=data["email"], password=data["password"])
         if not user:
             raise serializers.ValidationError("Invalid credentials")
         if not user.is_active:

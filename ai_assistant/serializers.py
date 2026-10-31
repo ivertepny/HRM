@@ -1,5 +1,6 @@
 # ai_assistant/serializers.py
 from rest_framework import serializers
+
 from .models import AIQuery, ChatSession
 
 
@@ -15,11 +16,11 @@ class ChatResponseSerializer(serializers.Serializer):
 class AIQuerySerializer(serializers.ModelSerializer):
     class Meta:
         model = AIQuery
-        fields = ['id', 'message', 'response', 'created_at']
+        fields = ["id", "message", "response", "created_at"]
 
 
 class ChatSessionSerializer(serializers.ModelSerializer):
     class Meta:
         model = ChatSession
-        fields = ['id', 'session_id', 'user', 'name', 'created_at', 'conversation']
-        read_only_fields = ['id', 'session_id', 'user', 'created_at', 'conversation']
+        fields = ["id", "session_id", "user", "name", "created_at", "conversation"]
+        read_only_fields = ["id", "session_id", "user", "created_at", "conversation"]

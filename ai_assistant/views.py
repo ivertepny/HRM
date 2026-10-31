@@ -1,22 +1,21 @@
 # ai_assistant/views.py
 import uuid
 
-from rest_framework.views import APIView
-from rest_framework.response import Response
-from rest_framework.permissions import IsAuthenticated
+from drf_spectacular.utils import extend_schema
 from rest_framework import status
 from rest_framework.generics import ListAPIView, RetrieveAPIView, UpdateAPIView
+from rest_framework.permissions import IsAuthenticated
+from rest_framework.response import Response
+from rest_framework.views import APIView
 
-from drf_spectacular.utils import extend_schema
-
+from .models import AIQuery, ChatSession
+from .openai_service import ask_openai
 from .serializers import (
+    AIQuerySerializer,
     ChatRequestSerializer,
     ChatResponseSerializer,
-    AIQuerySerializer,
     ChatSessionSerializer,
 )
-from .openai_service import ask_openai
-from .models import AIQuery, ChatSession
 
 
 class ChatAPIView(APIView):
@@ -27,7 +26,7 @@ class ChatAPIView(APIView):
         responses={200: ChatResponseSerializer},
         tags=["AI Assistant"],
         summary="Надіслати питання AI-асистенту",
-        description="Приймає повідомлення та повертає відповідь від OpenAI."
+        description="Приймає повідомлення та повертає відповідь від OpenAI.",
     )
     def post(self, request):
         serializer = ChatRequestSerializer(data=request.data)
@@ -40,7 +39,9 @@ class ChatAPIView(APIView):
             chat_session = None
 
             if chat_session_id:
-                chat_session = ChatSession.objects.filter(session_id=chat_session_id, user=user).first()
+                chat_session = ChatSession.objects.filter(
+                    session_id=chat_session_id, user=user
+                ).first()
 
             if not chat_session:
                 # Генеруємо унікальний session_id
@@ -48,7 +49,7 @@ class ChatAPIView(APIView):
                 chat_session = ChatSession.objects.create(
                     user=user,
                     session_id=session_id,
-                    name=chat_session_name or "Без назви"
+                    name=chat_session_name or "Без назви",
                 )
                 request.session["chat_session_id"] = session_id
                 request.session.modified = True
@@ -62,6 +63,7 @@ class ChatAPIView(APIView):
 
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
+
 class ChatHistoryAPIView(APIView):
     permission_classes = [IsAuthenticated]
 
@@ -69,10 +71,10 @@ class ChatHistoryAPIView(APIView):
         responses={200: AIQuerySerializer(many=True)},
         tags=["AI Assistant"],
         summary="Отримати історію спілкування з AI",
-        description="Повертає історію повідомлень для поточного користувача."
+        description="Повертає історію повідомлень для поточного користувача.",
     )
     def get(self, request):
-        history = AIQuery.objects.filter(user=request.user).order_by('-created_at')
+        history = AIQuery.objects.filter(user=request.user).order_by("-created_at")
         serializer = AIQuerySerializer(history, many=True)
         return Response(serializer.data)
 
@@ -83,7 +85,7 @@ class ChatResetSessionAPIView(APIView):
     @extend_schema(
         tags=["AI Assistant"],
         summary="Скинути поточну сесію",
-        description="Видаляє поточну чат-сесію і створює нову."
+        description="Видаляє поточну чат-сесію і створює нову.",
     )
     def post(self, request):
         user = request.user
@@ -94,10 +96,13 @@ class ChatResetSessionAPIView(APIView):
         request.session["chat_history"] = []
         request.session.modified = True
 
-        return Response({
-            "detail": "Сесію скинуто. Створено нову.",
-            "new_chat_session_id": new_chat_session.id
-        }, status=status.HTTP_200_OK)
+        return Response(
+            {
+                "detail": "Сесію скинуто. Створено нову.",
+                "new_chat_session_id": new_chat_session.id,
+            },
+            status=status.HTTP_200_OK,
+        )
 
 
 class ChatSessionListAPIView(ListAPIView):
@@ -107,10 +112,12 @@ class ChatSessionListAPIView(ListAPIView):
     @extend_schema(
         tags=["AI Assistant"],
         summary="Список чат-сесій користувача",
-        description="Повертає всі сесії, пов’язані з поточним користувачем."
+        description="Повертає всі сесії, пов’язані з поточним користувачем.",
     )
     def get_queryset(self):
-        return ChatSession.objects.filter(user=self.request.user).order_by('-created_at')
+        return ChatSession.objects.filter(user=self.request.user).order_by(
+            "-created_at"
+        )
 
 
 class ChatSessionHistoryAPIView(RetrieveAPIView):
@@ -120,14 +127,14 @@ class ChatSessionHistoryAPIView(RetrieveAPIView):
     @extend_schema(
         tags=["AI Assistant"],
         summary="Отримати історію повідомлень по сесії",
-        description="Повертає історію повідомлень певної чат-сесії."
+        description="Повертає історію повідомлень певної чат-сесії.",
     )
     def get(self, request, *args, **kwargs):
         session_id = kwargs.get("pk")
         session = ChatSession.objects.filter(user=request.user, id=session_id).first()
         if not session:
             return Response({"detail": "Сесію не знайдено."}, status=404)
-        messages = AIQuery.objects.filter(chat_session=session).order_by('created_at')
+        messages = AIQuery.objects.filter(chat_session=session).order_by("created_at")
         serializer = AIQuerySerializer(messages, many=True)
         return Response(serializer.data)
 
@@ -140,7 +147,7 @@ class ChatSessionRenameAPIView(UpdateAPIView):
     @extend_schema(
         tags=["AI Assistant"],
         summary="Перейменувати чат-сесію",
-        description="Дозволяє змінити ім’я сесії користувача."
+        description="Дозволяє змінити ім’я сесії користувача.",
     )
     def patch(self, request, *args, **kwargs):
         instance = self.get_object()

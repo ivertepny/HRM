@@ -1,26 +1,27 @@
-FROM python:3.10-slim
+FROM python:3.14-slim
 
-ENV PIP_DISABLE_PIP_VERSION_CHECK=1 \
-    PYTHONDONTWRITEBYTECODE=1 \
-    PYTHONUNBUFFERED=1
+COPY --from=ghcr.io/astral-sh/uv:0.9.5 /uv /uvx /bin/
+
+ENV PYTHONDONTWRITEBYTECODE=1 \
+    PYTHONUNBUFFERED=1 \
+    UV_COMPILE_BYTECODE=1 \
+    UV_LINK_MODE=copy \
+    # venv поза /usr/src, щоб bind-mount коду в docker-compose його не перекривав
+    UV_PROJECT_ENVIRONMENT=/opt/venv \
+    PATH="/opt/venv/bin:$PATH"
+
+# graphviz — бінарник dot для діаграм оргструктури
+RUN apt-get update && apt-get install --no-install-recommends -y graphviz \
+    && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /usr/src
 
-RUN apt-get update && apt-get install --no-install-recommends -y \
-    gcc \
-    libpq-dev \
-    graphviz \
-    build-essential \
-    python3-dev \
-    && rm -rf /var/lib/apt/lists/*
-
-RUN pip install --upgrade pip
-
-COPY ./requirements.txt .
-RUN pip install --no-cache-dir -r requirements.txt
-
-EXPOSE 8000
+# Спочатку тільки залежності — шар кешується, поки не змінився lock
+COPY pyproject.toml uv.lock ./
+RUN uv sync --frozen --no-dev
 
 COPY . .
 
-CMD ["sh", "-c", "python manage.py makemigrations && python manage.py migrate && python manage.py runserver 0.0.0.0:8000"]
+EXPOSE 8000
+
+CMD ["sh", "-c", "python manage.py migrate && python manage.py runserver 0.0.0.0:8000"]

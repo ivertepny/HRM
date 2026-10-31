@@ -1,6 +1,6 @@
 # ai_assistant/utils.py
+
 import tiktoken
-from typing import List, Dict
 
 
 def count_tokens(text: str, model: str = "gpt-4o-mini") -> int:
@@ -8,12 +8,15 @@ def count_tokens(text: str, model: str = "gpt-4o-mini") -> int:
     return len(encoding.encode(text))
 
 
-def build_messages(prompt: str, session) -> List[Dict[str, str]]:
+def build_messages(prompt: str, session) -> list[dict[str, str]]:
     """
     Формує список повідомлень для OpenAI API, включаючи історію з сесії.
     """
     messages = [
-        {"role": "system", "content": "Ти HR-асистент компанії. Відповідай коротко і по суті справи."}
+        {
+            "role": "system",
+            "content": "Ти HR-асистент компанії. Відповідай коротко і по суті справи.",
+        }
     ]
 
     history = session.get("chat_history", [])

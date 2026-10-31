@@ -6,7 +6,7 @@ from openai import OpenAI
 from company.models import StructuralUnit  # Імпорт моделі
 
 from .models import AIQuery, ChatSession
-from .utils import count_tokens, build_messages
+from .utils import build_messages, count_tokens
 
 client = OpenAI(api_key=settings.OPENAI_API_KEY)
 
@@ -33,7 +33,7 @@ def is_structure_query(prompt: str) -> bool:
 
 def get_company_structure_text():
     """Повертає структуру у вигляді тексту з відступами"""
-    units = StructuralUnit.objects.filter(is_active=True, parent=None).order_by('name')
+    units = StructuralUnit.objects.filter(is_active=True, parent=None).order_by("name")
 
     if not units.exists():
         return "Структура компанії не знайдена."
@@ -44,7 +44,7 @@ def get_company_structure_text():
         prefix = "  " * level
         unit_type = unit.custom_type or "Підрозділ"
         lines.append(f"{prefix}{unit_type}: {unit.name}")
-        for child in unit.children.filter(is_active=True).order_by('name'):
+        for child in unit.children.filter(is_active=True).order_by("name"):
             add_unit(child, level + 1)
 
     for root_unit in units:
@@ -66,8 +66,7 @@ def ask_openai(prompt: str, user, session) -> str:
         chat_session_id = session["chat_session_id"]
 
         chat_session, _ = ChatSession.objects.get_or_create(
-            session_id=chat_session_id,
-            defaults={"user": user}
+            session_id=chat_session_id, defaults={"user": user}
         )
 
         # Формуємо повідомлення для моделі
@@ -102,10 +101,7 @@ def ask_openai(prompt: str, user, session) -> str:
 
         # Запис у базу даних
         AIQuery.objects.create(
-            user=user,
-            message=prompt,
-            response=answer,
-            chat_session=chat_session
+            user=user, message=prompt, response=answer, chat_session=chat_session
         )
 
         return answer

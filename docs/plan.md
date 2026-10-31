@@ -26,17 +26,64 @@
 
 ---
 
-## Крок 2 — Система ролей та дозволів
+## Крок 2 — Гнучка IAM-подібна система ролей і дозволів
 
-- [ ] Додати поле `role` до моделі `User`: `admin` / `hr_manager` / `employee`
-- [ ] Створити `permissions.py` у кожному застосунку:
-  - `IsAdmin` — повні права
-  - `IsHRManager` — всі операції, крім дій над собою
-  - `IsOwner` — тільки власні дані
-- [ ] Логіка доступу:
-  - **Адмін** — керує всіма: прийом, звільнення, переведення, зміна зарплати, дозвіл на відпустку
-  - **HR-менеджер** — ті самі права, але операції над ним самим виконує тільки Адмін
-  - **Працівник** — бачить інших співробітників, свою зарплату (але не чужу), може подавати запит на відпустку
+> **Концепція:** замість 3 хардкодних ролей — динамічна система.  
+> Дозволи задаються рядками `resource:action` (наприклад `employees:read`, `salary:write`).  
+> Ролі — це іменовані набори дозволів. Користувач може мати кілька ролей.  
+> Scope дозволу може бути обмежений конкретним `StructuralUnit`.
+
+### 2.1 — Новий застосунок `permissions`
+
+- [ ] Створити `permissions` app (`python manage.py startapp permissions`)
+- [ ] Модель **`Permission`**:
+  - `resource` — рядок (`employees`, `salary`, `company`, `ai`, `vacations`, `equipment`, `attendance`)
+  - `action` — рядок (`read`, `write`, `delete`, `manage`)
+  - `description` — людиночитаний опис
+  - `codename` — унікальний рядок `resource:action` (авто-генерується)
+- [ ] Модель **`Role`**:
+  - `name` — назва ролі (наприклад: `HR Manager`, `Recruiter`, `Team Lead`)
+  - `description`
+  - `permissions` — M2M → `Permission`
+  - `is_system` — захист від видалення системних ролей
+- [ ] Модель **`UserRole`**:
+  - `user` — FK → `User`
+  - `role` — FK → `Role`
+  - `structural_unit` — FK → `StructuralUnit` (nullable) — scope: якщо заданий, роль діє тільки в межах цього підрозділу та його нащадків
+  - `granted_by` — FK → `User` — хто призначив
+  - `expires_at` — DateTimeField (nullable) — тимчасові ролі
+
+### 2.2 — Backend перевірки
+
+- [ ] Метод `user.get_permissions(structural_unit=None)` — повертає `set` рядків `resource:action` для даного контексту (глобальні + scope для підрозділу)
+- [ ] Кастомний DRF permission **`HasPermission("resource:action")`** — замінює `IsAuthenticated` у всіх views
+- [ ] Scope-перевірка: при доступі до об'єкта конкретного підрозділу — враховувати `UserRole.structural_unit`
+- [ ] Endpoint `GET /api/users/me/permissions/` — повертає всі активні дозволи поточного юзера
+
+### 2.3 — Seed: системні ролі з коробки
+
+Три дефолтних ролі через `management command` (`python manage.py seed_roles`):
+
+| Роль | Дозволи |
+|------|---------|
+| `System Admin` | `*:*` (всі ресурси, всі дії) |
+| `HR Manager` | `employees:*`, `salary:*`, `vacations:manage`, `equipment:manage`, `attendance:read`, `company:read` |
+| `Employee` | `employees:read` (тільки свій профіль), `salary:read` (тільки своя), `vacations:write` (подати заявку), `ai:use` |
+
+### 2.4 — Endpoints
+
+- [ ] `GET/POST /api/roles/` — список ролей, створення (тільки System Admin)
+- [ ] `GET/PATCH/DELETE /api/roles/{id}/` — деталі, редагування, видалення
+- [ ] `GET/POST /api/roles/{id}/permissions/` — дозволи ролі
+- [ ] `GET/POST /api/users/{id}/roles/` — ролі користувача, призначення ролі
+- [ ] `DELETE /api/users/{id}/roles/{role_id}/` — зняти роль
+- [ ] `GET /api/permissions/` — каталог всіх дозволів (тільки читання)
+
+### 2.5 — Кешування дозволів
+
+- [ ] Дозволи кешувати в `request`-об'єкті на час одного запиту (уникнути N+1 запитів до БД)
+- [ ] При зміні `UserRole` — інвалідувати кеш (сигнал `post_save`)
+- [ ] **Пізніше (Крок 9):** мігрувати кеш у Redis для горизонтального масштабування
 
 ---
 

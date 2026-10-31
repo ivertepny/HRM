@@ -11,10 +11,6 @@ services:
     build: .
     container_name: api
     restart: always
-    command: sh -c "sleep 5 && 
-                    python manage.py migrate &&
-                    python manage.py runserver 0.0.0.0:8000"
-
     volumes:
       - .:/usr/src/
     ports:
@@ -22,7 +18,8 @@ services:
 #    networks:
 #      - app-network
     depends_on:
-      - db
+      db:
+        condition: service_healthy
     environment:
       - IN_DOCKER=true
       - SECRET_KEY=${SECRET_KEY}
@@ -54,6 +51,11 @@ services:
       - POSTGRES_DB=${POSTGRES_DB}
       - POSTGRES_USER=${POSTGRES_USER}
       - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
 
   pgadmin:
     image: dpage/pgadmin4

@@ -2,21 +2,28 @@ from drf_spectacular.utils import extend_schema_field
 from rest_framework import serializers
 
 from company.models import StructuralUnit
-from .models import Position, Employee, CareerHistory
 from users.models import User
 from users.serializers import UserSerializer
+
+from .models import CareerHistory, Employee, Position
 
 
 class PositionSerializer(serializers.ModelSerializer):
     class Meta:
         model = Position
-        fields = ['id', 'name']
+        fields = ["id", "name"]
 
 
 class EmployeeSerializer(serializers.ModelSerializer):
-    user_id = serializers.PrimaryKeyRelatedField(queryset=User.objects.all(), source='user', write_only=True)
-    structural_unit_id = serializers.PrimaryKeyRelatedField(queryset=StructuralUnit.objects.all(), source='structural_unit', write_only=True)
-    position_id = serializers.PrimaryKeyRelatedField(queryset=Position.objects.all(), source='position', write_only=True)
+    user_id = serializers.PrimaryKeyRelatedField(
+        queryset=User.objects.all(), source="user", write_only=True
+    )
+    structural_unit_id = serializers.PrimaryKeyRelatedField(
+        queryset=StructuralUnit.objects.all(), source="structural_unit", write_only=True
+    )
+    position_id = serializers.PrimaryKeyRelatedField(
+        queryset=Position.objects.all(), source="position", write_only=True
+    )
 
     user = serializers.SerializerMethodField()
     structural_unit = serializers.SerializerMethodField()
@@ -27,10 +34,15 @@ class EmployeeSerializer(serializers.ModelSerializer):
     class Meta:
         model = Employee
         fields = [
-            'id', 'user', 'user_id',
-            'structural_unit', 'structural_unit_id',
-            'position', 'position_id',
-            'date_hired', 'date_fired'
+            "id",
+            "user",
+            "user_id",
+            "structural_unit",
+            "structural_unit_id",
+            "position",
+            "position_id",
+            "date_hired",
+            "date_fired",
         ]
 
     @extend_schema_field(UserSerializer)
@@ -48,27 +60,29 @@ class EmployeeSerializer(serializers.ModelSerializer):
         while current:
             names.insert(0, current.name)
             current = current.parent
-        return {
-            'id': unit.id,
-            'full_name': ' > '.join(names)
-        }
+        return {"id": unit.id, "full_name": " > ".join(names)}
 
 
 class CareerHistorySerializer(serializers.ModelSerializer):
     position = PositionSerializer(read_only=True)
     position_id = serializers.PrimaryKeyRelatedField(
-        queryset=Position.objects.all(), source='position', write_only=True
+        queryset=Position.objects.all(), source="position", write_only=True
     )
     structural_unit_id = serializers.PrimaryKeyRelatedField(
-        queryset=StructuralUnit.objects.all(), source='structural_unit', write_only=True, required=False
+        queryset=StructuralUnit.objects.all(),
+        source="structural_unit",
+        write_only=True,
+        required=False,
     )
 
     class Meta:
         model = CareerHistory
         fields = [
-            'id', 'employee', 'date',
-            'position', 'position_id',
-            'structural_unit_id',
-            'salary',
+            "id",
+            "employee",
+            "date",
+            "position",
+            "position_id",
+            "structural_unit_id",
+            "salary",
         ]
-
