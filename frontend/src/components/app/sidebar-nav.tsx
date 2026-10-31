@@ -5,7 +5,7 @@ import { usePathname } from "next/navigation";
 
 import { Skeleton } from "@/components/ui/skeleton";
 import { cn } from "@/lib/utils";
-import { visibleNavigation } from "@/lib/navigation";
+import { activeHref, visibleNavigation } from "@/lib/navigation";
 import { useMyAccess } from "@/lib/queries";
 
 export function SidebarNav({ onNavigate }: { onNavigate?: () => void }) {
@@ -22,6 +22,8 @@ export function SidebarNav({ onNavigate }: { onNavigate?: () => void }) {
     );
   }
 
+  const current = activeHref(pathname);
+
   return (
     <nav aria-label="Розділи" className="grid gap-7">
       {visibleNavigation(access).map((group) => (
@@ -29,7 +31,7 @@ export function SidebarNav({ onNavigate }: { onNavigate?: () => void }) {
           <p className="px-3 pb-2 text-[0.8125rem] text-slate">{group.label}</p>
           <ul className="grid gap-px">
             {group.items.map((item) => {
-              const active = pathname === item.href || pathname.startsWith(`${item.href}/`);
+              const active = item.href === current;
               if (item.soon) {
                 return (
                   <li key={item.href}>

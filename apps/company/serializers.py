@@ -86,6 +86,8 @@ class HistorySerializer(serializers.ModelSerializer):
 
 
 class StructuralUnitSerializer(ModelCleanMixin, serializers.ModelSerializer):
+    """Підрозділ оргструктури (MPTT-дерево)."""
+
     parent = serializers.PrimaryKeyRelatedField(
         queryset=StructuralUnit.objects.filter(is_active=True),
         required=False,

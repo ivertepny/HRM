@@ -1,20 +1,12 @@
 "use client";
 
+import { Section } from "@/components/app/section";
 import { Skeleton } from "@/components/ui/skeleton";
 import { fullName } from "@/components/app/user-name";
 import { formatDate, formatMoney, LEVEL_LABELS } from "@/lib/format";
 import { useMe, useMyAccess, useMyEmployee } from "@/lib/queries";
 
 import { NameForm } from "./name-form";
-
-function Section({ title, children }: { title: string; children: React.ReactNode }) {
-  return (
-    <section className="grid gap-4 border-t border-border pt-8 md:grid-cols-[11rem_minmax(0,1fr)] md:gap-10">
-      <h2 className="font-sans text-[0.9375rem] font-semibold">{title}</h2>
-      <div className="max-w-[40rem]">{children}</div>
-    </section>
-  );
-}
 
 function Facts({ rows }: { rows: [string, React.ReactNode][] }) {
   return (

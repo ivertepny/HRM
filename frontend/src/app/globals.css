@@ -111,6 +111,16 @@
   }
 }
 
+/* Заявка на розгляді: вохрові діагональні смуги — відрізняється від схваленої
+   не лише кольором (доступно і при порушеннях кольоросприйняття) */
+.vacation-pending {
+  background: repeating-linear-gradient(
+    135deg,
+    var(--ochre) 0 4px,
+    color-mix(in oklab, var(--ochre) 45%, white) 4px 8px
+  );
+}
+
 @media (prefers-reduced-motion: reduce) {
   *,
   *::before,

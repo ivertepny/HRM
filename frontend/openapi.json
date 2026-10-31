@@ -3950,7 +3950,7 @@
             },
             "PatchedStructuralUnitRequest": {
                 "type": "object",
-                "description": "Викликає Model.clean() під час валідації ModelSerializer.\n\nDRF, на відміну від Django-форм, не викликає clean(), тому бізнес-правила\nз моделі через API не перевіряються. Міксин застосовує нові значення до\nкопії об'єкта і викликає clean(); DjangoValidationError DRF сам перетворює\nна 400 з помилками по полях.",
+                "description": "Підрозділ оргструктури (MPTT-дерево).",
                 "properties": {
                     "parent": {
                         "type": "integer",
@@ -4168,7 +4168,7 @@
             },
             "StructuralUnit": {
                 "type": "object",
-                "description": "Викликає Model.clean() під час валідації ModelSerializer.\n\nDRF, на відміну від Django-форм, не викликає clean(), тому бізнес-правила\nз моделі через API не перевіряються. Міксин застосовує нові значення до\nкопії об'єкта і викликає clean(); DjangoValidationError DRF сам перетворює\nна 400 з помилками по полях.",
+                "description": "Підрозділ оргструктури (MPTT-дерево).",
                 "properties": {
                     "id": {
                         "type": "integer",
@@ -4226,7 +4226,7 @@
             },
             "StructuralUnitRequest": {
                 "type": "object",
-                "description": "Викликає Model.clean() під час валідації ModelSerializer.\n\nDRF, на відміну від Django-форм, не викликає clean(), тому бізнес-правила\nз моделі через API не перевіряються. Міксин застосовує нові значення до\nкопії об'єкта і викликає clean(); DjangoValidationError DRF сам перетворює\nна 400 з помилками по полях.",
+                "description": "Підрозділ оргструктури (MPTT-дерево).",
                 "properties": {
                     "parent": {
                         "type": "integer",
@@ -4466,7 +4466,7 @@
             },
             "VacationRequest": {
                 "type": "object",
-                "description": "Викликає Model.clean() під час валідації ModelSerializer.\n\nDRF, на відміну від Django-форм, не викликає clean(), тому бізнес-правила\nз моделі через API не перевіряються. Міксин застосовує нові значення до\nкопії об'єкта і викликає clean(); DjangoValidationError DRF сам перетворює\nна 400 з помилками по полях.",
+                "description": "Заявка на відпустку. Без employee_id подається за себе.",
                 "properties": {
                     "id": {
                         "type": "integer",
@@ -4540,7 +4540,7 @@
             },
             "VacationRequestRequest": {
                 "type": "object",
-                "description": "Викликає Model.clean() під час валідації ModelSerializer.\n\nDRF, на відміну від Django-форм, не викликає clean(), тому бізнес-правила\nз моделі через API не перевіряються. Міксин застосовує нові значення до\nкопії об'єкта і викликає clean(); DjangoValidationError DRF сам перетворює\nна 400 з помилками по полях.",
+                "description": "Заявка на відпустку. Без employee_id подається за себе.",
                 "properties": {
                     "employee_id": {
                         "type": "integer",

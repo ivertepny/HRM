@@ -13,6 +13,8 @@ EmployeeSummaryField = inline_serializer(
 
 
 class VacationRequestSerializer(ModelCleanMixin, serializers.ModelSerializer):
+    """Заявка на відпустку. Без employee_id подається за себе."""
+
     employee = serializers.SerializerMethodField()
     employee_id = serializers.PrimaryKeyRelatedField(
         queryset=Employee.objects.select_related("user", "structural_unit"),
