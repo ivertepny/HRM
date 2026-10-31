@@ -28,28 +28,34 @@ class StructuralUnit(MPTTModel):
     def clean(self):
         super().clean()
 
-        # Унікальність імені серед дітей одного батька
-        if self.parent:
-            siblings = (
-                self.parent.children.exclude(id=self.id)
-                if self.id
-                else self.parent.children.all()
-            )
-            if siblings.filter(name=self.name, is_active=True).exists():
-                raise ValidationError(
-                    {
-                        "name": f"Підрозділ з ім'ям '{self.name}' вже існує у цього батька"
-                    }
-                )
-
-        # Перевірка на циклічність
-        if self.parent and self.parent in self.get_descendants():
-            raise ValidationError("Спроба створити циклічний зв'язок")
-
-        # Обмеження глибини ієрархії
-        if self.get_level() > settings.MAX_STRUCTURAL_UNIT_DEPTH:
+        # Унікальність імені серед активних підрозділів одного рівня (і серед коренів)
+        siblings = StructuralUnit.objects.filter(
+            parent=self.parent, name=self.name, is_active=True
+        )
+        if self.pk:
+            siblings = siblings.exclude(pk=self.pk)
+        if siblings.exists():
             raise ValidationError(
-                f"Максимальна глибина ієрархії: {settings.MAX_STRUCTURAL_UNIT_DEPTH} рівнів"
+                {"name": f"Підрозділ з ім'ям '{self.name}' вже існує на цьому рівні"}
+            )
+
+        if self.parent is None:
+            return
+
+        # Перевірка на циклічність: не можна стати дитиною себе чи свого нащадка
+        if self.pk and (
+            self.parent.pk == self.pk
+            or self.get_descendants().filter(pk=self.parent.pk).exists()
+        ):
+            raise ValidationError({"parent": "Спроба створити циклічний зв'язок"})
+
+        # Обмеження глибини ієрархії — рахуємо від нового батька
+        if self.parent.get_level() + 1 > settings.MAX_STRUCTURAL_UNIT_DEPTH:
+            raise ValidationError(
+                {
+                    "parent": f"Максимальна глибина ієрархії: "
+                    f"{settings.MAX_STRUCTURAL_UNIT_DEPTH} рівнів"
+                }
             )
 
     def delete(self, *args, **kwargs):

@@ -4,11 +4,12 @@ from drf_spectacular.utils import OpenApiParameter, extend_schema
 from graphviz import Digraph
 from rest_framework import viewsets
 from rest_framework.decorators import action
+from rest_framework.exceptions import ValidationError
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 
 from .models import StructuralUnit
-from .serializers import StructuralUnitSerializer
+from .serializers import HistorySerializer, StructuralUnitSerializer
 
 
 class StructuralUnitViewSet(viewsets.ModelViewSet):
@@ -24,6 +25,7 @@ class StructuralUnitViewSet(viewsets.ModelViewSet):
 
     @extend_schema(
         summary="Отримати історію змін",
+        responses={200: HistorySerializer(many=True)},
         parameters=[
             OpenApiParameter(
                 name="limit",
@@ -38,8 +40,10 @@ class StructuralUnitViewSet(viewsets.ModelViewSet):
         unit = self.get_object()
         history = unit.history.all().order_by("-history_date")
         if limit := request.query_params.get("limit"):
+            if not limit.isdigit():
+                raise ValidationError({"limit": "Має бути додатним цілим числом."})
             history = history[: int(limit)]
-        serializer = self.get_serializer(history, many=True)
+        serializer = HistorySerializer(history, many=True)
         return Response(serializer.data)
 
     @extend_schema(summary="Згенерувати діаграму", responses={200: OpenApiTypes.BINARY})

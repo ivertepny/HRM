@@ -3,7 +3,7 @@ import datetime
 import factory
 
 from apps.company.tests.factories import StructuralUnitFactory
-from apps.employees.models import CareerHistory, Employee, Position
+from apps.employees.models import Employee, Position
 from apps.users.tests.factories import UserFactory
 
 
@@ -23,14 +23,3 @@ class EmployeeFactory(factory.django.DjangoModelFactory):
     structural_unit = factory.SubFactory(StructuralUnitFactory)
     position = factory.SubFactory(PositionFactory)
     date_hired = datetime.date(2025, 1, 15)
-
-
-class CareerHistoryFactory(factory.django.DjangoModelFactory):
-    class Meta:
-        model = CareerHistory
-
-    employee = factory.SubFactory(EmployeeFactory)
-    date = datetime.date(2025, 1, 15)
-    position = factory.SelfAttribute("employee.position")
-    structural_unit = factory.SelfAttribute("employee.structural_unit")
-    salary = "1000.00"

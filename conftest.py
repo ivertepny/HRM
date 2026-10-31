@@ -4,6 +4,13 @@ from rest_framework.test import APIClient
 from apps.users.tests.factories import DEFAULT_PASSWORD, UserFactory
 
 
+@pytest.fixture(autouse=True)
+def media_root(settings, tmp_path):
+    """Завантажені в тестах файли — у тимчасову теку, а не в media/ проєкту."""
+    settings.MEDIA_ROOT = tmp_path / "media"
+    return settings.MEDIA_ROOT
+
+
 @pytest.fixture
 def api_client():
     return APIClient()

@@ -164,3 +164,6 @@ HRM_NEW.log*
 
 # Django collectstatic
 staticfiles/
+
+# Завантажені файли (dev)
+media/

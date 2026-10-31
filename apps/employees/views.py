@@ -1,11 +1,12 @@
 from django_filters.rest_framework import DjangoFilterBackend
 from drf_spectacular.utils import extend_schema, extend_schema_view
-from rest_framework import viewsets
+from rest_framework import mixins, viewsets
 from rest_framework.permissions import IsAuthenticated
 
-from .models import CareerHistory, Employee, Position
+from .models import CareerHistory, Employee, EmployeeDocument, Position
 from .serializers import (
     CareerHistorySerializer,
+    EmployeeDocumentSerializer,
     EmployeeSerializer,
     PositionSerializer,
 )
@@ -23,23 +24,55 @@ class PositionViewSet(viewsets.ModelViewSet):
     permission_classes = [IsAuthenticated]
 
 
+@extend_schema_view(
+    partial_update=extend_schema(
+        description=(
+            "Зміна посади, підрозділу, рівня чи зарплати або звільнення "
+            "(date_fired) автоматично додає запис у career-history. "
+            "Фото — через multipart/form-data."
+        )
+    )
+)
 class EmployeeViewSet(viewsets.ModelViewSet):
     queryset = Employee.objects.select_related("user", "structural_unit", "position")
     serializer_class = EmployeeSerializer
     permission_classes = [IsAuthenticated]
+    filter_backends = [DjangoFilterBackend]
+    filterset_fields = ["structural_unit", "position", "level"]
 
 
 @extend_schema_view(
-    create=extend_schema(
-        summary="Create career history record",
-        description="Adds a new career history entry for an employee.",
-    )
+    list=extend_schema(summary="Журнал кадрових подій (тільки читання)")
 )
-class CareerHistoryViewSet(viewsets.ModelViewSet):
+class CareerHistoryViewSet(viewsets.ReadOnlyModelViewSet):
     queryset = CareerHistory.objects.select_related(
-        "employee", "position", "structural_unit"
+        "employee__user", "position", "structural_unit", "changed_by"
     )
     serializer_class = CareerHistorySerializer
     permission_classes = [IsAuthenticated]
     filter_backends = [DjangoFilterBackend]
-    filterset_fields = ["employee", "position", "date"]
+    filterset_fields = ["employee", "event", "position", "date"]
+
+
+@extend_schema_view(
+    create=extend_schema(summary="Завантажити документ (multipart/form-data)")
+)
+class EmployeeDocumentViewSet(
+    mixins.CreateModelMixin,
+    mixins.ListModelMixin,
+    mixins.RetrieveModelMixin,
+    mixins.DestroyModelMixin,
+    viewsets.GenericViewSet,
+):
+    queryset = EmployeeDocument.objects.select_related("employee", "uploaded_by")
+    serializer_class = EmployeeDocumentSerializer
+    permission_classes = [IsAuthenticated]
+    filter_backends = [DjangoFilterBackend]
+    filterset_fields = ["employee", "document_type"]
+
+    def perform_create(self, serializer):
+        serializer.save(uploaded_by=self.request.user)
+
+    def perform_destroy(self, instance):
+        instance.file.delete(save=False)
+        instance.delete()

@@ -1,7 +1,7 @@
 """Продакшн. ALLOWED_HOSTS обов'язковий; очікується HTTPS за reverse proxy (Nginx)."""
 
 from .base import *  # noqa: F403
-from .base import env
+from .base import STORAGES, env
 
 DEBUG = False
 ALLOWED_HOSTS = env.list("ALLOWED_HOSTS")
@@ -9,3 +9,16 @@ ALLOWED_HOSTS = env.list("ALLOWED_HOSTS")
 SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
 SESSION_COOKIE_SECURE = True
 CSRF_COOKIE_SECURE = True
+
+# Файли працівників — у приватному S3-бакеті, доступ лише через підписані URL.
+# Ключі boto3 бере з AWS_ACCESS_KEY_ID / AWS_SECRET_ACCESS_KEY в оточенні.
+STORAGES["default"] = {
+    "BACKEND": "storages.backends.s3.S3Storage",
+    "OPTIONS": {
+        "bucket_name": env("AWS_STORAGE_BUCKET_NAME"),
+        "region_name": env("AWS_S3_REGION_NAME"),
+        "file_overwrite": False,
+        "querystring_auth": True,
+        "querystring_expire": 3600,
+    },
+}

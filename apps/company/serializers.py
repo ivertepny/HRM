@@ -1,8 +1,21 @@
-from django.conf import settings
 from drf_spectacular.utils import extend_schema_field, inline_serializer
 from rest_framework import serializers
 
+from apps.core.serializers import ModelCleanMixin
+
 from .models import StructuralUnit
+
+# Один компонент на схему: inline_serializer з тим самим name, створений двічі,
+# drf-spectacular вважає конфліктом
+AncestorField = inline_serializer(
+    name="AncestorField",
+    fields={
+        "id": serializers.IntegerField(),
+        "name": serializers.CharField(),
+        "type": serializers.CharField(),
+    },
+    many=True,
+)
 
 
 class HistorySerializer(serializers.ModelSerializer):
@@ -42,17 +55,7 @@ class HistorySerializer(serializers.ModelSerializer):
             obj.history_type, "unknown"
         )
 
-    @extend_schema_field(
-        inline_serializer(
-            name="AncestorField",
-            fields={
-                "id": serializers.IntegerField(),
-                "name": serializers.CharField(),
-                "type": serializers.CharField(),
-            },
-            many=True,
-        )
-    )
+    @extend_schema_field(AncestorField)
     def get_ancestors(self, obj):
         try:
             current = StructuralUnit.objects.get(id=obj.id)
@@ -64,27 +67,16 @@ class HistorySerializer(serializers.ModelSerializer):
             return []
 
 
-class StructuralUnitSerializer(serializers.ModelSerializer):
+class StructuralUnitSerializer(ModelCleanMixin, serializers.ModelSerializer):
     parent = serializers.PrimaryKeyRelatedField(
         queryset=StructuralUnit.objects.filter(is_active=True),
         required=False,
         allow_null=True,
         help_text="Виберіть ID батьківського підрозділу (дитину, якщо додаєте онука)",
     )
-    history = HistorySerializer(many=True, read_only=True)
     children_count = serializers.IntegerField(read_only=True)
 
-    @extend_schema_field(
-        inline_serializer(
-            name="AncestorField",
-            fields={
-                "id": serializers.IntegerField(),
-                "name": serializers.CharField(),
-                "type": serializers.CharField(),
-            },
-            many=True,
-        )
-    )
+    @extend_schema_field(AncestorField)
     def get_ancestors(self, obj):
         current = None
 
@@ -106,20 +98,9 @@ class StructuralUnitSerializer(serializers.ModelSerializer):
     class Meta:
         model = StructuralUnit
         fields = "__all__"
-        read_only_fields = ("is_active", "history", "lft", "rght", "tree_id", "level")
+        read_only_fields = ("is_active", "lft", "rght", "tree_id", "level")
 
     def validate_parent(self, value):
         if value and not value.is_active:
             raise serializers.ValidationError("Не можна додавати до неактивного батька")
         return value
-
-    def validate(self, data):
-        """Додаткова валідація для обмеження глибини ієрархії."""
-        parent = data.get("parent")
-        if parent:
-            level = parent.level + 1
-            if level > settings.MAX_STRUCTURAL_UNIT_DEPTH:
-                raise serializers.ValidationError(
-                    f"Максимальна глибина ієрархії: {settings.MAX_STRUCTURAL_UNIT_DEPTH} рівнів"
-                )
-        return data

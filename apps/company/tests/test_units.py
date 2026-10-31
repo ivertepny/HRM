@@ -76,3 +76,98 @@ def test_history_records_author(auth_client, user):
 
     assert record.history_type == "+"
     assert record.history_user == user
+
+
+def test_duplicate_name_among_siblings_returns_400(auth_client):
+    root = StructuralUnitFactory(name="HQ")
+    StructuralUnitFactory(name="IT", parent=root)
+
+    response = auth_client.post(
+        "/api/company/units/", {"name": "IT", "parent": root.id}, format="json"
+    )
+
+    assert response.status_code == 400
+    assert "name" in response.json()
+
+
+def test_duplicate_root_name_returns_400(auth_client):
+    StructuralUnitFactory(name="HQ")
+
+    response = auth_client.post("/api/company/units/", {"name": "HQ"}, format="json")
+
+    assert response.status_code == 400
+
+
+def test_same_name_under_different_parents_is_allowed(auth_client):
+    kyiv = StructuralUnitFactory(name="Kyiv")
+    lviv = StructuralUnitFactory(name="Lviv")
+    StructuralUnitFactory(name="IT", parent=kyiv)
+
+    response = auth_client.post(
+        "/api/company/units/", {"name": "IT", "parent": lviv.id}, format="json"
+    )
+
+    assert response.status_code == 201
+
+
+def test_renaming_unit_to_its_own_name_is_allowed(auth_client):
+    unit = StructuralUnitFactory(name="HQ")
+
+    response = auth_client.patch(
+        f"/api/company/units/{unit.id}/", {"name": "HQ"}, format="json"
+    )
+
+    assert response.status_code == 200
+
+
+@pytest.mark.parametrize("target", ["self", "descendant"])
+def test_cycle_in_tree_returns_400(auth_client, target):
+    root = StructuralUnitFactory(name="HQ")
+    child = StructuralUnitFactory(name="IT", parent=root)
+    new_parent = root if target == "self" else child
+
+    response = auth_client.patch(
+        f"/api/company/units/{root.id}/", {"parent": new_parent.id}, format="json"
+    )
+
+    assert response.status_code == 400
+    assert "parent" in response.json()
+
+
+def test_depth_limit_is_enforced(auth_client, settings):
+    settings.MAX_STRUCTURAL_UNIT_DEPTH = 1
+    root = StructuralUnitFactory(name="HQ")
+    child = StructuralUnitFactory(name="IT", parent=root)
+
+    response = auth_client.post(
+        "/api/company/units/", {"name": "Backend", "parent": child.id}, format="json"
+    )
+
+    assert response.status_code == 400
+    assert "parent" in response.json()
+
+
+def test_history_endpoint_returns_change_log(auth_client, user):
+    unit_id = auth_client.post(
+        "/api/company/units/", {"name": "HQ"}, format="json"
+    ).json()["id"]
+    auth_client.patch(
+        f"/api/company/units/{unit_id}/", {"name": "Head Office"}, format="json"
+    )
+
+    response = auth_client.get(f"/api/company/units/{unit_id}/history/")
+
+    assert response.status_code == 200
+    updated, created = response.json()
+    assert updated["event_type"] == "updated"
+    assert updated["history_user"] == user.email
+    assert updated["changes"] == [{"field": "name", "old": "HQ", "new": "Head Office"}]
+    assert created["event_type"] == "created"
+
+
+def test_history_limit_must_be_a_number(auth_client):
+    unit = StructuralUnitFactory()
+
+    response = auth_client.get(f"/api/company/units/{unit.id}/history/?limit=abc")
+
+    assert response.status_code == 400
