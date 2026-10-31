@@ -1,5 +1,6 @@
 from drf_spectacular.utils import extend_schema_field
 from rest_framework import serializers
+from rest_framework.validators import UniqueValidator
 
 from apps.company.models import StructuralUnit
 from apps.users.models import User
@@ -15,8 +16,17 @@ class PositionSerializer(serializers.ModelSerializer):
 
 
 class EmployeeSerializer(serializers.ModelSerializer):
+    # Поле оголошене вручну, тому DRF не додає перевірку OneToOne сам
     user_id = serializers.PrimaryKeyRelatedField(
-        queryset=User.objects.all(), source="user", write_only=True
+        queryset=User.objects.all(),
+        source="user",
+        write_only=True,
+        validators=[
+            UniqueValidator(
+                queryset=Employee.objects.all(),
+                message="Цей користувач уже має профіль працівника.",
+            )
+        ],
     )
     structural_unit_id = serializers.PrimaryKeyRelatedField(
         queryset=StructuralUnit.objects.all(), source="structural_unit", write_only=True

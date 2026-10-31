@@ -33,6 +33,7 @@ dev = [
     "pytest>=8.3.0",
     "pytest-django>=4.9.0",
     "pytest-cov>=6.0.0",
+    "factory-boy>=3.3",
 ]
 
 [tool.uv]
@@ -68,13 +69,13 @@ known-third-party = [
 # pytest
 # ---------------------------------------------------------------------------
 [tool.pytest.ini_options]
-DJANGO_SETTINGS_MODULE = "config.settings.dev"
-python_files = ["tests.py", "test_*.py"]
+DJANGO_SETTINGS_MODULE = "config.settings.test"
+python_files = ["test_*.py"]
 addopts = "-v --tb=short"
 
 [tool.coverage.run]
 source = ["apps"]
-omit = ["*/migrations/*", "*/tests*", "manage.py"]
+omit = ["*/migrations/*", "*/tests/*"]
 
 [tool.coverage.report]
 show_missing = true
