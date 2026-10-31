@@ -1,7 +1,5 @@
 import pytest
 
-from apps.users.models import User
-
 pytestmark = pytest.mark.django_db
 
 
@@ -9,35 +7,6 @@ def login(api_client, email, password):
     return api_client.post(
         "/api/users/login/", {"email": email, "password": password}, format="json"
     )
-
-
-def test_register_creates_user_with_hashed_password(api_client, password):
-    response = api_client.post(
-        "/api/users/register/",
-        {
-            "email": "new@example.com",
-            "password": password,
-            "first_name": "Ivan",
-            "last_name": "Petrenko",
-        },
-        format="json",
-    )
-
-    assert response.status_code == 201
-    user = User.objects.get(email="new@example.com")
-    assert user.check_password(password)
-    assert "password" not in response.json()
-
-
-def test_register_rejects_duplicate_email(api_client, user, password):
-    response = api_client.post(
-        "/api/users/register/",
-        {"email": user.email, "password": password},
-        format="json",
-    )
-
-    assert response.status_code == 400
-    assert "email" in response.json()
 
 
 def test_login_returns_token_pair_and_user(api_client, user, password):

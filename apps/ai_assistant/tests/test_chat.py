@@ -43,7 +43,7 @@ def test_structure_question_is_answered_from_db_without_openai(client, auth_clie
 
 @pytest.mark.django_db
 @patch("apps.ai_assistant.openai_service.client")
-def test_regular_question_goes_to_openai_and_is_stored(client, auth_client, user):
+def test_regular_question_goes_to_openai_and_is_stored(client, auth_client, admin_user):
     client.chat.completions.create.return_value = fake_completion("24 дні")
 
     response = auth_client.post(
@@ -52,5 +52,21 @@ def test_regular_question_goes_to_openai_and_is_stored(client, auth_client, user
 
     assert response.status_code == 200
     assert response.json()["response"] == "24 дні"
-    query = AIQuery.objects.get(user=user)
+    query = AIQuery.objects.get(user=admin_user)
     assert (query.message, query.response) == ("Скільки днів відпустки?", "24 дні")
+
+
+@pytest.mark.django_db
+@pytest.mark.parametrize("url", ["/api/ai/chat/", "/api/ai/chat/sessions/"])
+def test_ai_requires_ai_use(client_as, user, grant, url):
+    method = "post" if url.endswith("chat/") else "get"
+    payload = {"message": "Привіт"} if method == "post" else None
+
+    denied = getattr(client_as(user), method)(url, payload, format="json")
+    grant(user, "ai:use")
+    with patch("apps.ai_assistant.openai_service.client") as client:
+        client.chat.completions.create.return_value = fake_completion("Привіт!")
+        allowed = getattr(client_as(user), method)(url, payload, format="json")
+
+    assert denied.status_code == 403
+    assert allowed.status_code == 200

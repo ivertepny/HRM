@@ -59,16 +59,16 @@ def test_photo_must_be_an_image(auth_client):
     assert "photo" in response.json()
 
 
-def test_upload_document_records_uploader(auth_client, user):
+def test_upload_document_records_uploader(auth_client, admin_user):
     employee = EmployeeFactory()
 
     response = upload_document(auth_client, employee, pdf_file(), title="CV 2026")
 
     assert response.status_code == 201
     document = EmployeeDocument.objects.get(pk=response.json()["id"])
-    assert document.uploaded_by == user
+    assert document.uploaded_by == admin_user
     assert document.file.name.startswith(f"employees/{employee.id}/documents/")
-    assert response.json()["uploaded_by"] == user.email
+    assert response.json()["uploaded_by"] == admin_user.email
 
 
 def test_document_extension_is_validated(auth_client):

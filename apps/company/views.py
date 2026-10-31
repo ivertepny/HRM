@@ -5,8 +5,10 @@ from graphviz import Digraph
 from rest_framework import viewsets
 from rest_framework.decorators import action
 from rest_framework.exceptions import ValidationError
-from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
+
+from apps.access.permissions import HasPermission, ensure_permission
+from apps.access.services import scope_queryset
 
 from .models import StructuralUnit
 from .serializers import HistorySerializer, StructuralUnitSerializer
@@ -15,10 +17,18 @@ from .serializers import HistorySerializer, StructuralUnitSerializer
 class StructuralUnitViewSet(viewsets.ModelViewSet):
     serializer_class = StructuralUnitSerializer
     queryset = StructuralUnit.objects.filter(is_active=True)
-    permission_classes = [IsAuthenticated]
+    permission_classes = [HasPermission]
+    required_permissions = {
+        "read": "company:read",
+        "write": "company:write",
+        "destroy": "company:delete",
+    }
 
     def get_queryset(self):
-        queryset = super().get_queryset()
+        # Scoped-роль бачить свій підрозділ і його нащадків
+        queryset = scope_queryset(
+            self.request, super().get_queryset(), "company:read", unit_field="pk"
+        )
         if unit_type := self.request.query_params.get("type"):
             queryset = queryset.filter(custom_type=unit_type)
         return queryset.prefetch_related("children")
@@ -85,14 +95,30 @@ class StructuralUnitViewSet(viewsets.ModelViewSet):
         if not parent_id:
             return Response({"detail": "Не вказано parent_id"}, status=400)
 
-        try:
-            parent = StructuralUnit.objects.get(pk=parent_id, is_active=True)
-        except StructuralUnit.DoesNotExist:
+        parent = self.get_queryset().filter(pk=parent_id).first()
+        if parent is None:
             return Response({"detail": "Підрозділ не знайдено"}, status=404)
 
         children = parent.children.filter(is_active=True)
         serializer = self.get_serializer(children, many=True)
         return Response(serializer.data)
+
+    def get_permission_unit(self, obj):
+        return obj
+
+    def perform_create(self, serializer):
+        # Корінь — лише з глобальним company:write, дочірній — з правом на батька
+        ensure_permission(
+            self.request, "company:write", serializer.validated_data.get("parent")
+        )
+        serializer.save()
+
+    def perform_update(self, serializer):
+        if "parent" in serializer.validated_data:
+            ensure_permission(
+                self.request, "company:write", serializer.validated_data["parent"]
+            )
+        serializer.save()
 
     def perform_destroy(self, instance):
         instance.delete()

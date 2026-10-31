@@ -14,7 +14,7 @@ def patch_employee(client, employee, data):
     return client.patch(f"/api/employees/employees/{employee.id}/", data, format="json")
 
 
-def test_hiring_creates_hired_record_with_author(auth_client, user):
+def test_hiring_creates_hired_record_with_author(auth_client, admin_user):
     response = auth_client.post(
         "/api/employees/employees/",
         {
@@ -33,7 +33,7 @@ def test_hiring_creates_hired_record_with_author(auth_client, user):
     assert record.date == datetime.date(2025, 2, 1)
     assert record.salary == 1500
     assert record.reason == "Оффер прийнято"
-    assert record.changed_by == user
+    assert record.changed_by == admin_user
 
 
 def test_salary_change_is_logged_with_reason_and_effective_date(auth_client):

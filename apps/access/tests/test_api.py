@@ -11,9 +11,8 @@ pytestmark = pytest.mark.django_db
 
 
 @pytest.fixture
-def admin_client(api_client):
-    api_client.force_authenticate(UserFactory(is_superuser=True))
-    return api_client
+def admin_client(auth_client):
+    return auth_client
 
 
 @pytest.fixture
@@ -33,8 +32,8 @@ def create_role(client, name, *permissions):
     )
 
 
-def test_regular_user_cannot_read_roles(auth_client):
-    assert auth_client.get("/api/access/roles/").status_code == 403
+def test_regular_user_cannot_read_roles(client_as, user):
+    assert client_as(user).get("/api/access/roles/").status_code == 403
 
 
 def test_permission_catalog_is_listed_unpaginated(admin_client):
@@ -179,12 +178,12 @@ def test_cannot_revoke_role_with_permissions_you_lack(role_manager):
     assert UserRole.objects.filter(pk=assignment.pk).exists()
 
 
-def test_my_permissions(auth_client, user, grant):
+def test_my_permissions(client_as, user, grant):
     it = StructuralUnitFactory(name="IT")
     grant(user, "employees:read", "ai:use")
     grant(user, "employees:write", unit=it)
 
-    response = auth_client.get("/api/users/me/permissions/")
+    response = client_as(user).get("/api/users/me/permissions/")
 
     body = response.json()
     assert response.status_code == 200

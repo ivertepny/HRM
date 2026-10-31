@@ -73,16 +73,20 @@ SYSTEM_ROLES = {
             "ai:use",
         ],
     },
+    # Власні дані (профіль, зарплата, кар'єрна історія, документи) доступні
+    # завжди, без дозволів — тому salary:read тут немає: він відкрив би чужі.
     "Employee": {
         "description": "Базовий доступ працівника",
         "permissions": [
             "employees:read",
-            "salary:read",
+            "company:read",
             "vacations:write",
             "ai:use",
         ],
     },
 }
+
+DEFAULT_ROLE = "Employee"  # видається кожному новому користувачу
 
 
 def all_codenames():

@@ -102,6 +102,39 @@ class UserAccess:
         }
 
 
+def scope_queryset(request, queryset, codename, unit_field=None, owner=None):
+    """Звужує queryset до того, що користувач може бачити за `codename`.
+
+    unit_field — шлях до StructuralUnit (напр. "employee__structural_unit");
+    без нього scoped-ролі нічого не відкривають (ресурс лише глобальний).
+    owner — Q-умова "власні записи", які видно завжди.
+    """
+    access = get_access(request)
+    units = access.units_for(codename)
+    if units is None:
+        return queryset
+    condition = Q(pk__in=[])
+    if unit_field and access.scoped_permissions:
+        condition |= Q(**{f"{unit_field}__in": units})
+    if owner is not None:
+        condition |= owner
+    return queryset.filter(condition)
+
+
+def grant_default_role(user, granted_by=None):
+    """Видає новому користувачу базову роль (якщо seed_roles уже виконано)."""
+    from .catalog import DEFAULT_ROLE
+    from .models import Role
+
+    role = Role.objects.filter(name=DEFAULT_ROLE).first()
+    if role is None:
+        return None
+    assignment, _ = UserRole.objects.get_or_create(
+        user=user, role=role, structural_unit=None, defaults={"granted_by": granted_by}
+    )
+    return assignment
+
+
 def get_access(request):
     access = getattr(request, _REQUEST_CACHE_ATTR, None)
     if access is None or access.user != request.user:

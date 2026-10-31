@@ -4,9 +4,10 @@ import uuid
 from drf_spectacular.utils import extend_schema
 from rest_framework import status
 from rest_framework.generics import ListAPIView, RetrieveAPIView, UpdateAPIView
-from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
+
+from apps.access.permissions import HasPermission
 
 from .models import AIQuery, ChatSession
 from .openai_service import ask_openai
@@ -17,9 +18,12 @@ from .serializers import (
     ChatSessionSerializer,
 )
 
+AI_PERMISSIONS = {"*": "ai:use"}
+
 
 class ChatAPIView(APIView):
-    permission_classes = [IsAuthenticated]
+    permission_classes = [HasPermission]
+    required_permissions = AI_PERMISSIONS
 
     @extend_schema(
         request=ChatRequestSerializer,
@@ -65,7 +69,8 @@ class ChatAPIView(APIView):
 
 
 class ChatHistoryAPIView(APIView):
-    permission_classes = [IsAuthenticated]
+    permission_classes = [HasPermission]
+    required_permissions = AI_PERMISSIONS
 
     @extend_schema(
         responses={200: AIQuerySerializer(many=True)},
@@ -80,7 +85,8 @@ class ChatHistoryAPIView(APIView):
 
 
 class ChatResetSessionAPIView(APIView):
-    permission_classes = [IsAuthenticated]
+    permission_classes = [HasPermission]
+    required_permissions = AI_PERMISSIONS
 
     @extend_schema(
         tags=["AI Assistant"],
@@ -106,7 +112,8 @@ class ChatResetSessionAPIView(APIView):
 
 
 class ChatSessionListAPIView(ListAPIView):
-    permission_classes = [IsAuthenticated]
+    permission_classes = [HasPermission]
+    required_permissions = AI_PERMISSIONS
     serializer_class = ChatSessionSerializer
 
     @extend_schema(
@@ -121,7 +128,8 @@ class ChatSessionListAPIView(ListAPIView):
 
 
 class ChatSessionHistoryAPIView(RetrieveAPIView):
-    permission_classes = [IsAuthenticated]
+    permission_classes = [HasPermission]
+    required_permissions = AI_PERMISSIONS
     serializer_class = AIQuerySerializer
 
     @extend_schema(
@@ -140,7 +148,8 @@ class ChatSessionHistoryAPIView(RetrieveAPIView):
 
 
 class ChatSessionRenameAPIView(UpdateAPIView):
-    permission_classes = [IsAuthenticated]
+    permission_classes = [HasPermission]
+    required_permissions = AI_PERMISSIONS
     serializer_class = ChatSessionSerializer
     queryset = ChatSession.objects.all()
 

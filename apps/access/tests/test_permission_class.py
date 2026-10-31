@@ -22,8 +22,19 @@ def drf_request(method, user):
     return request
 
 
+def handler(*args, **kwargs):
+    return None
+
+
 def view(action=None, **required):
-    return SimpleNamespace(action=action, required_permissions=required)
+    # Як у справжньої view: обробники методів є атрибутами
+    return SimpleNamespace(
+        action=action,
+        required_permissions=required,
+        get=handler,
+        post=handler,
+        delete=handler,
+    )
 
 
 @pytest.mark.parametrize(
@@ -66,4 +77,12 @@ def test_object_permission_respects_unit_scope(grant):
     )
     assert not HasPermission().has_object_permission(
         request, v, SimpleNamespace(structural_unit=sales)
+    )
+
+
+def test_unsupported_method_is_left_to_drf_for_405():
+    read_only_view = SimpleNamespace(action=None, required_permissions={}, get=handler)
+
+    assert HasPermission().has_permission(
+        drf_request("POST", UserFactory()), read_only_view
     )

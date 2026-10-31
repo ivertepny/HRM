@@ -2,6 +2,8 @@ from drf_spectacular.utils import extend_schema_field, inline_serializer
 from rest_framework import serializers
 from rest_framework.validators import UniqueValidator
 
+from apps.access.permissions import ensure_permission
+from apps.access.services import get_access
 from apps.company.models import StructuralUnit
 from apps.users.models import User
 from apps.users.serializers import UserSerializer
@@ -12,6 +14,30 @@ UnitSummaryField = inline_serializer(
     name="UnitSummary",
     fields={"id": serializers.IntegerField(), "full_name": serializers.CharField()},
 )
+
+
+def can_see_salary(request, employee):
+    """Власну зарплату видно завжди, чужу — лише з salary:read для підрозділу."""
+    if request is None:
+        return True
+    return employee.user_id == request.user.pk or get_access(request).has(
+        "salary:read", employee.structural_unit
+    )
+
+
+class SalaryVisibilityMixin:
+    """Прибирає поле salary з відповіді, якщо його не можна бачити."""
+
+    def get_salary_owner(self, instance):
+        return instance
+
+    def to_representation(self, instance):
+        data = super().to_representation(instance)
+        if not can_see_salary(
+            self.context.get("request"), self.get_salary_owner(instance)
+        ):
+            data.pop("salary", None)
+        return data
 
 
 def unit_summary(unit):
@@ -28,7 +54,7 @@ class PositionSerializer(serializers.ModelSerializer):
         fields = ["id", "name"]
 
 
-class EmployeeSerializer(serializers.ModelSerializer):
+class EmployeeSerializer(SalaryVisibilityMixin, serializers.ModelSerializer):
     # Поле оголошене вручну, тому DRF не додає перевірку OneToOne сам
     user_id = serializers.PrimaryKeyRelatedField(
         queryset=User.objects.all(),
@@ -92,6 +118,17 @@ class EmployeeSerializer(serializers.ModelSerializer):
     def get_structural_unit(self, obj):
         return unit_summary(obj.structural_unit)
 
+    def validate(self, attrs):
+        attrs = super().validate(attrs)
+        request = self.context.get("request")
+        salary_changed = "salary" in attrs and (
+            self.instance is None or attrs["salary"] != self.instance.salary
+        )
+        if request is not None and salary_changed:
+            unit = attrs.get("structural_unit") or self.instance.structural_unit
+            ensure_permission(request, "salary:write", unit)
+        return attrs
+
     def create(self, validated_data):
         reason, change_date = self._pop_change_meta(validated_data)
         instance = Employee(**validated_data)
@@ -113,7 +150,7 @@ class EmployeeSerializer(serializers.ModelSerializer):
         )
 
 
-class CareerHistorySerializer(serializers.ModelSerializer):
+class CareerHistorySerializer(SalaryVisibilityMixin, serializers.ModelSerializer):
     """Тільки читання: записи створюються автоматично при зміні Employee."""
 
     position = PositionSerializer(read_only=True)
@@ -136,6 +173,9 @@ class CareerHistorySerializer(serializers.ModelSerializer):
             "created_at",
         ]
         read_only_fields = fields
+
+    def get_salary_owner(self, instance):
+        return instance.employee
 
     @extend_schema_field(UnitSummaryField)
     def get_structural_unit(self, obj):

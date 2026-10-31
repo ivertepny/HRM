@@ -69,13 +69,13 @@ def test_children_endpoint_returns_only_active_direct_children(auth_client):
     assert [u["name"] for u in response.json()] == ["IT"]
 
 
-def test_history_records_author(auth_client, user):
+def test_history_records_author(auth_client, admin_user):
     auth_client.post("/api/company/units/", {"name": "HQ"}, format="json")
 
     record = StructuralUnit.objects.get(name="HQ").history.first()
 
     assert record.history_type == "+"
-    assert record.history_user == user
+    assert record.history_user == admin_user
 
 
 def test_duplicate_name_among_siblings_returns_400(auth_client):
@@ -147,7 +147,7 @@ def test_depth_limit_is_enforced(auth_client, settings):
     assert "parent" in response.json()
 
 
-def test_history_endpoint_returns_change_log(auth_client, user):
+def test_history_endpoint_returns_change_log(auth_client, admin_user):
     unit_id = auth_client.post(
         "/api/company/units/", {"name": "HQ"}, format="json"
     ).json()["id"]
@@ -160,7 +160,7 @@ def test_history_endpoint_returns_change_log(auth_client, user):
     assert response.status_code == 200
     updated, created = response.json()
     assert updated["event_type"] == "updated"
-    assert updated["history_user"] == user.email
+    assert updated["history_user"] == admin_user.email
     assert updated["changes"] == [{"field": "name", "old": "HQ", "new": "Head Office"}]
     assert created["event_type"] == "created"
 
