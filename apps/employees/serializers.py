@@ -5,6 +5,7 @@ from rest_framework.validators import UniqueValidator
 from apps.access.permissions import ensure_permission
 from apps.access.services import get_access
 from apps.company.models import StructuralUnit
+from apps.company.serializers import ancestors_of
 from apps.users.models import User
 from apps.users.serializers import UserSerializer
 
@@ -26,7 +27,9 @@ def can_see_salary(request, employee):
 
 
 class SalaryVisibilityMixin:
-    """Прибирає поле salary з відповіді, якщо його не можна бачити."""
+    """Прибирає зарплату (суму і валюту) з відповіді, якщо її не можна бачити."""
+
+    SALARY_FIELDS = ("salary", "salary_currency")
 
     def get_salary_owner(self, instance):
         return instance
@@ -36,15 +39,17 @@ class SalaryVisibilityMixin:
         if not can_see_salary(
             self.context.get("request"), self.get_salary_owner(instance)
         ):
-            data.pop("salary", None)
+            for field in self.SALARY_FIELDS:
+                data.pop(field, None)
         return data
 
 
-def unit_summary(unit):
-    """{'id': 5, 'full_name': 'Company > Department > Team'}"""
+def unit_summary(serializer, unit):
+    """{'id': 5, 'full_name': 'Company > Department > Team'} — шлях з індексу
+    підрозділів (один запит на відповідь, а не на кожен рядок)."""
     if unit is None:
         return None
-    names = [u.name for u in unit.get_ancestors(include_self=True)]
+    names = [a["name"] for a in ancestors_of(serializer, unit.id, include_self=True)]
     return {"id": unit.id, "full_name": " > ".join(names)}
 
 
@@ -102,6 +107,7 @@ class EmployeeSerializer(SalaryVisibilityMixin, serializers.ModelSerializer):
             "position_id",
             "level",
             "salary",
+            "salary_currency",
             "birth_date",
             "photo",
             "date_hired",
@@ -116,13 +122,15 @@ class EmployeeSerializer(SalaryVisibilityMixin, serializers.ModelSerializer):
 
     @extend_schema_field(UnitSummaryField)
     def get_structural_unit(self, obj):
-        return unit_summary(obj.structural_unit)
+        return unit_summary(self, obj.structural_unit)
 
     def validate(self, attrs):
         attrs = super().validate(attrs)
         request = self.context.get("request")
-        salary_changed = "salary" in attrs and (
-            self.instance is None or attrs["salary"] != self.instance.salary
+        salary_changed = any(
+            field in attrs
+            and (self.instance is None or attrs[field] != getattr(self.instance, field))
+            for field in SalaryVisibilityMixin.SALARY_FIELDS
         )
         if request is not None and salary_changed:
             unit = attrs.get("structural_unit") or self.instance.structural_unit
@@ -168,6 +176,7 @@ class CareerHistorySerializer(SalaryVisibilityMixin, serializers.ModelSerializer
             "structural_unit",
             "level",
             "salary",
+            "salary_currency",
             "reason",
             "changed_by",
             "created_at",
@@ -179,7 +188,7 @@ class CareerHistorySerializer(SalaryVisibilityMixin, serializers.ModelSerializer
 
     @extend_schema_field(UnitSummaryField)
     def get_structural_unit(self, obj):
-        return unit_summary(obj.structural_unit)
+        return unit_summary(self, obj.structural_unit)
 
 
 class EmployeeDocumentSerializer(serializers.ModelSerializer):

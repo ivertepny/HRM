@@ -6,6 +6,8 @@ UserAccess завантажує всі активні призначення р�
 (get_access(request)).
 """
 
+from functools import cached_property
+
 from django.conf import settings
 from django.db.models import Min, Q
 from django.utils import timezone
@@ -64,13 +66,30 @@ class UserAccess:
             return True
         if unit is None or not self.scoped_permissions:
             return False
-        ancestor_ids = unit.get_ancestors(include_self=True).values_list(
-            "id", flat=True
-        )
+        # Без запитів: unit у піддереві кореня, якщо його MPTT-інтервал
+        # вкладений в інтервал кореня (важливо для перевірок у списках)
         return any(
-            matches(self.scoped_permissions.get(unit_id, ()), codename)
-            for unit_id in ancestor_ids
+            tree_id == unit.tree_id and lft <= unit.lft and unit.rght <= rght
+            for tree_id, lft, rght in self._scope_roots(codename)
         )
+
+    @cached_property
+    def _root_bounds(self):
+        """unit_id -> (tree_id, lft, rght) підрозділів зі scoped-ролями; один запит."""
+        return {
+            unit_id: (tree_id, lft, rght)
+            for unit_id, tree_id, lft, rght in StructuralUnit.objects.filter(
+                id__in=self.scoped_permissions
+            ).values_list("id", "tree_id", "lft", "rght")
+        }
+
+    def _scope_roots(self, codename):
+        """MPTT-межі підрозділів, на які видано роль з цим дозволом."""
+        return [
+            self._root_bounds[unit_id]
+            for unit_id, perms in self.scoped_permissions.items()
+            if unit_id in self._root_bounds and matches(perms, codename)
+        ]
 
     def has_anywhere(self, codename):
         """Дозвіл глобально або хоча б в одному підрозділі (для list/create)."""
@@ -85,16 +104,12 @@ class UserAccess:
         """
         if self.has(codename):
             return None
-        roots = [
-            unit_id
-            for unit_id, perms in self.scoped_permissions.items()
-            if matches(perms, codename)
-        ]
+        roots = self._scope_roots(codename)
         if not roots:
             return StructuralUnit.objects.none()
         subtree = Q()
-        for root in StructuralUnit.objects.filter(id__in=roots):
-            subtree |= Q(tree_id=root.tree_id, lft__gte=root.lft, rght__lte=root.rght)
+        for tree_id, lft, rght in roots:
+            subtree |= Q(tree_id=tree_id, lft__gte=lft, rght__lte=rght)
         return StructuralUnit.objects.filter(subtree)
 
     def covers(self, codenames, unit=None):

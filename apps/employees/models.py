@@ -44,6 +44,12 @@ class Level(models.TextChoices):
     SENIOR = "senior", "Senior"
 
 
+class Currency(models.TextChoices):
+    UAH = "UAH", "Гривня"
+    USD = "USD", "Долар США"
+    EUR = "EUR", "Євро"
+
+
 class Employee(models.Model):
     """Поточний стан працівника.
 
@@ -52,7 +58,13 @@ class Employee(models.Model):
     атрибути `_change_reason` / `_change_date` перед save().
     """
 
-    TRACKED_FIELDS = ("position_id", "structural_unit_id", "level", "salary")
+    TRACKED_FIELDS = (
+        "position_id",
+        "structural_unit_id",
+        "level",
+        "salary",
+        "salary_currency",
+    )
 
     user = models.OneToOneField(
         User, on_delete=models.PROTECT, related_name="employee_profile"
@@ -68,6 +80,9 @@ class Employee(models.Model):
         null=True,
         blank=True,
         validators=[MinValueValidator(0)],
+    )
+    salary_currency = models.CharField(
+        max_length=3, choices=Currency.choices, default=Currency.UAH
     )
     birth_date = models.DateField(null=True, blank=True)
     photo = models.ImageField(
@@ -136,6 +151,7 @@ class Employee(models.Model):
             structural_unit=self.structural_unit,
             level=self.level,
             salary=self.salary,
+            salary_currency=self.salary_currency,
             reason=reason,
             changed_by=current_request_user(),
         )
@@ -163,6 +179,9 @@ class CareerHistory(models.Model):
     )
     level = models.CharField(max_length=20, choices=Level.choices, blank=True)
     salary = models.DecimalField(max_digits=12, decimal_places=2, null=True, blank=True)
+    salary_currency = models.CharField(
+        max_length=3, choices=Currency.choices, default=Currency.UAH
+    )
     reason = models.CharField(max_length=255, blank=True)
     changed_by = models.ForeignKey(
         User, on_delete=models.SET_NULL, null=True, blank=True, related_name="+"

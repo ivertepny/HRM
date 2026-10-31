@@ -7,7 +7,7 @@
 - [x] Тулінг: uv + ruff, Python 3.14, Docker на uv
 - [x] Структура `config/` (settings `base` / `dev` / `prod` / `test`) + `apps/`, міграції з нуля
 - [x] Основа API: пагінація, глобальний обробник помилок, CORS, JWT refresh (access 30 хв), Swagger
-- [x] Тести: pytest + factory_boy (171 тест, ~95%)
+- [x] Тести: pytest + factory_boy (182 тести, ~95%)
 - [x] Ролі та дозволи (`apps/access`): `resource:action` з wildcard-ами, scope на підрозділ, тимчасові ролі, захист від ескалації, `seed_roles` (System Admin / HR Manager / Employee)
 - [x] Дозволи на всіх ендпоінтах; власні дані доступні завжди; зарплата — окремо через `salary:read` / `write`; реєстрація лише через HR
 - [x] Працівник: рівень, зарплата, дата народження, фото, документи; автоматичний кадровий журнал (`CareerHistory`); `PROTECT` замість `CASCADE`
@@ -15,8 +15,19 @@
 - [x] S3 для файлів у prod — лише через IAM-роль (код готовий, підключення — при деплої)
 - [x] AI-асистент на LangGraph / LangChain (`langchain-openai`): агент з інструментом оргструктури (з урахуванням прав), сесії в БД за `session_id`, ліміт історії, таймаут і 503 при збої LLM
 - [x] Redis-кеш (`CACHES` з `REDIS_URL`, сервіс у docker-compose): права користувача кешуються між запитами, версійна інвалідація при зміні ролей / дозволів, TTL з урахуванням тимчасових ролей, fallback на БД при недоступності Redis
+- [x] Технічний борг: `children_count`, без N+1 у списках (предки підрозділів, scope-перевірки зарплати), валюта зарплати (`salary_currency`), psycopg3 з `connect_timeout`
 
 ---
+
+## ✅ Крок 1 — Рефакторинг AI-асистента
+
+- [x] Сесії чату в БД за `session_id` з запиту, а не в cookie-сесії (не працює з JWT-клієнтами)
+- [x] Виправити `chat/reset` (другий виклик падає з `IntegrityError`) — прибрано: нова розмова = запит без `session_id`
+- [x] Обмежити історію (`MAX_HISTORY_AI`)
+- [x] OpenAI-клієнт ліниво; таймаути, 503 при збої API
+- [x] Відповідь про структуру — з урахуванням `company:read` і scope
+- [x] Прибрати дублювання `ChatSession.conversation` / `AIQuery`
+- [x] Перевести на LangGraph / LangChain: агент з інструментом `get_company_structure`
 
 ## ⏭ Крок 2 — Відпустки (`vacations`)
 
@@ -50,6 +61,7 @@
 
 - [ ] gunicorn, Nginx, HTTPS (Let's Encrypt), `SECURE_SSL_REDIRECT`, HSTS, `collectstatic`
 - [ ] S3: приватний бакет + IAM-роль сервера (`GetObject` / `PutObject` / `DeleteObject` на `employees/*`)
+- [x] Redis-кеш дозволів між запитами
 - [ ] Довгий випадковий `SECRET_KEY`
 
 ## Крок 8 — Документація
@@ -60,12 +72,15 @@
 
 ---
 
-## Технічний борг
+## ✅ Технічний борг
 
-- [ ] `StructuralUnit.children_count` оголошено, але не заповнюється
-- [ ] Перевірка зарплати в списках для scoped-ролей — запит на кожен рядок
-- [ ] Зарплата без валюти
-- [ ] `psycopg2-binary` → `psycopg[binary]` (за бажанням)
+- [x] `StructuralUnit.children_count` оголошено, але не заповнюється
+- [x] Перевірка зарплати в списках для scoped-ролей — запит на кожен рядок
+- [x] Зарплата без валюти
+- [x] `psycopg2-binary` → `psycopg[binary]`
+- [x] N+1 запитів предків підрозділу у списках (знайдено під час ревізії)
+
+---
 
 ## Пізніше
 

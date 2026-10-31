@@ -14,8 +14,6 @@ dependencies = [
     "django-mptt>=0.17.0",
     "django-simple-history>=3.8.0",
     "django-storages[s3]>=1.14.6",
-    # Database
-    "psycopg2-binary>=2.9.10",
     "tiktoken>=0.9.0",
     # AWS
     "boto3>=1.37.35",
@@ -28,6 +26,7 @@ dependencies = [
     "langgraph>=1.2.19",
     "openai>=1.77",
     "redis[hiredis]>=5.2",
+    "psycopg[binary]>=3.2",
 ]
 
 [dependency-groups]

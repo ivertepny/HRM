@@ -86,6 +86,8 @@ DATABASES = {
         # Локально — localhost; у docker-compose перевизначається на "db"
         "HOST": env("POSTGRES_HOST", default="localhost"),
         "PORT": env("POSTGRES_PORT", default="5432"),
+        # psycopg3 без таймауту може довго чекати на недоступний хост
+        "OPTIONS": {"connect_timeout": env.int("POSTGRES_CONNECT_TIMEOUT", default=5)},
     },
 }
 

@@ -18,6 +18,31 @@ AncestorField = inline_serializer(
 )
 
 
+def ancestors_of(serializer, unit_id, include_self=False):
+    """Ланцюжок предків з індексу всіх підрозділів, побудованого один раз на
+    відповідь (спільний context серіалізатора) — без запиту на кожен рядок.
+    Оргструктура невелика, тож один запит на всі вузли дешевший за N запитів."""
+    index = serializer.context.get("_units_index")
+    if index is None:
+        index = {
+            unit_id: (parent_id, name, custom_type)
+            for unit_id, parent_id, name, custom_type in StructuralUnit.objects.values_list(
+                "id", "parent_id", "name", "custom_type"
+            )
+        }
+        serializer.context["_units_index"] = index
+
+    if unit_id not in index:
+        return []
+    chain = []
+    current = unit_id if include_self else index[unit_id][0]
+    while current is not None and current in index:
+        parent_id, name, custom_type = index[current]
+        chain.append({"id": current, "name": name, "type": custom_type})
+        current = parent_id
+    return chain[::-1]
+
+
 class HistorySerializer(serializers.ModelSerializer):
     history_user = serializers.SerializerMethodField()
     changes = serializers.SerializerMethodField()
@@ -57,14 +82,7 @@ class HistorySerializer(serializers.ModelSerializer):
 
     @extend_schema_field(AncestorField)
     def get_ancestors(self, obj):
-        try:
-            current = StructuralUnit.objects.get(id=obj.id)
-            ancestors = list(current.get_ancestors()) + [current]
-            return [
-                {"id": a.id, "name": a.name, "type": a.custom_type} for a in ancestors
-            ]
-        except StructuralUnit.DoesNotExist:
-            return []
+        return ancestors_of(self, obj.id, include_self=True)
 
 
 class StructuralUnitSerializer(ModelCleanMixin, serializers.ModelSerializer):
@@ -74,26 +92,20 @@ class StructuralUnitSerializer(ModelCleanMixin, serializers.ModelSerializer):
         allow_null=True,
         help_text="Виберіть ID батьківського підрозділу (дитину, якщо додаєте онука)",
     )
-    children_count = serializers.IntegerField(read_only=True)
+    children_count = serializers.SerializerMethodField()
+    ancestors = serializers.SerializerMethodField()
+
+    @extend_schema_field(serializers.IntegerField())
+    def get_children_count(self, obj) -> int:
+        # У списках — з анотації get_queryset(); після create/update — запитом
+        annotated = getattr(obj, "active_children_count", None)
+        if annotated is not None:
+            return annotated
+        return obj.children.filter(is_active=True).count()
 
     @extend_schema_field(AncestorField)
     def get_ancestors(self, obj):
-        current = None
-
-        # Якщо це історичний об’єкт — пробуємо знайти активний
-        if hasattr(obj, "instance") and isinstance(obj.instance, StructuralUnit):
-            current = StructuralUnit.objects.filter(id=obj.id).first()
-        elif isinstance(obj, StructuralUnit):
-            current = obj
-
-        if current:
-            return [
-                {"id": a.id, "name": a.name, "type": a.custom_type}
-                for a in current.get_ancestors()
-            ]
-        return []
-
-    ancestors = serializers.SerializerMethodField()
+        return ancestors_of(self, obj.id)
 
     class Meta:
         model = StructuralUnit

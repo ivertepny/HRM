@@ -1,3 +1,4 @@
+from django.db.models import Count, Q
 from django.http import HttpResponse
 from drf_spectacular.types import OpenApiTypes
 from drf_spectacular.utils import OpenApiParameter, extend_schema
@@ -31,7 +32,10 @@ class StructuralUnitViewSet(viewsets.ModelViewSet):
         )
         if unit_type := self.request.query_params.get("type"):
             queryset = queryset.filter(custom_type=unit_type)
-        return queryset.prefetch_related("children")
+        # GROUP BY скидає Meta.ordering MPTT — порядок дерева задаємо явно
+        return queryset.annotate(
+            active_children_count=Count("children", filter=Q(children__is_active=True))
+        ).order_by("tree_id", "lft")
 
     @extend_schema(
         summary="Отримати історію змін",
@@ -99,7 +103,7 @@ class StructuralUnitViewSet(viewsets.ModelViewSet):
         if parent is None:
             return Response({"detail": "Підрозділ не знайдено"}, status=404)
 
-        children = parent.children.filter(is_active=True)
+        children = self.get_queryset().filter(parent=parent)
         serializer = self.get_serializer(children, many=True)
         return Response(serializer.data)
 
