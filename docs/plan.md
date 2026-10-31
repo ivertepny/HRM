@@ -40,19 +40,20 @@
 
 ## ⏭ Крок 3 — Frontend (Next.js / React)
 
-- [ ] Каркас `frontend/` у цьому репозиторії: Next.js (App Router) + TypeScript, Tailwind + shadcn/ui, українська локаль
-- [ ] Типи API генеруються з OpenAPI-схеми бекенду (`/api/schema/`) — без ручних DTO
-- [ ] Дані: TanStack Query; форми: react-hook-form + zod; помилки API (400 по полях / 403 / 409 / 503) — у формах і тостах
-- [ ] Автентифікація через Next.js як BFF: JWT в httpOnly-cookie (не в localStorage), автоматичний refresh, logout з blacklist
-- [ ] UI з урахуванням прав: меню і кнопки за `/api/users/me/permissions/`
+- [x] Каркас `frontend/` у цьому репозиторії: Next.js (App Router) + TypeScript, Tailwind + shadcn/ui, українська локаль
+- [x] Типи API генеруються з OpenAPI-схеми бекенду (`/api/schema/`) — без ручних DTO
+- [x] Дані: TanStack Query; форми: react-hook-form + zod; помилки API (400 по полях / 403 / 409 / 503) — у формах і тостах
+- [x] Автентифікація через Next.js як BFF: JWT в httpOnly-cookie (не в localStorage), автоматичний refresh, logout з blacklist
+- [x] UI з урахуванням прав: меню і кнопки за `/api/users/me/permissions/`
 - [ ] Сторінки:
-  - [ ] Вхід, мій профіль (`/me`)
+  - [x] Вхід, мій профіль (`/me`)
   - [ ] Довідник працівників і профіль працівника (зарплата — лише за правами), кадровий журнал, документи
   - [ ] Оргструктура: дерево, SVG-діаграма, історія змін
   - [ ] Відпустки: мої заявки і подання, черга на розгляд для HR, календар (`date_from` / `date_to`)
   - [ ] AI-асистент: чат із сесіями
   - [ ] Адміністрування: облікові записи, ролі, призначення ролей
-- [ ] Тести: Vitest + Testing Library; e2e — Playwright проти бекенду в docker-compose
+- [x] Тести: Vitest + Testing Library
+- [ ] e2e — Playwright проти бекенду в docker-compose
 - [ ] Сервіс `frontend` у docker-compose; CORS для dev уже налаштовано
 
 ## Крок 4 — Обладнання (`equipment`)

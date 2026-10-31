@@ -48,7 +48,7 @@ class EmployeeViewSet(viewsets.ModelViewSet):
         "destroy": "employees:delete",
     }
     filter_backends = [DjangoFilterBackend]
-    filterset_fields = ["structural_unit", "position", "level"]
+    filterset_fields = ["user", "structural_unit", "position", "level"]
 
     def get_queryset(self):
         return scope_queryset(
