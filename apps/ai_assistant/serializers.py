@@ -16,6 +16,11 @@ class ChatRequestSerializer(serializers.Serializer):
 
 class AIQuerySerializer(serializers.ModelSerializer):
     session_id = serializers.UUIDField(source="chat_session.session_id", read_only=True)
+    tools_used = serializers.ListField(
+        child=serializers.CharField(),
+        read_only=True,
+        help_text="Інструменти агента, викликані для відповіді",
+    )
 
     class Meta:
         model = AIQuery

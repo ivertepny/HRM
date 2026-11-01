@@ -2997,7 +2997,14 @@
                     "response": {
                         "type": "string"
                     },
-                    "tools_used": {},
+                    "tools_used": {
+                        "type": "array",
+                        "items": {
+                            "type": "string"
+                        },
+                        "readOnly": true,
+                        "description": "Інструменти агента, викликані для відповіді"
+                    },
                     "created_at": {
                         "type": "string",
                         "format": "date-time",
