@@ -32,6 +32,16 @@ npm run dev                    # http://localhost:3000
 npm run api:types
 ```
 
+## Docker
+
+Сервіс `frontend` у кореневому `docker-compose.yml` збирає продакшн-образ
+(`output: "standalone"`) і ходить у Django всередині мережі compose
+(`BACKEND_URL=http://api:8000`). Порти задаються змінними `FRONTEND_PORT` (3000)
+і `API_PORT` (8000) — зручно, якщо 8000 на машині вже зайнятий.
+
+`COOKIE_SECURE=false` — для стенда по HTTP не на `localhost`; у продакшні
+(за HTTPS) змінну не задавати.
+
 ## Перевірки
 
 ```powershell
@@ -40,3 +50,17 @@ npm run lint
 npm test
 npm run build
 ```
+
+## e2e (Playwright)
+
+Тести ганяються проти ізольованого стенда `docker-compose.e2e.yml`: власна БД у
+пам'яті, демо-дані з `seed_demo`, фронтенд на порту 13000 — dev-базу не чіпає.
+
+```powershell
+npm run e2e:stack   # збирає й піднімає стенд, чекає готовності
+npm run e2e         # локально — у встановленому Chrome
+npm run e2e:down
+```
+
+Демо-користувачі: `admin@`, `hr@`, `olena@`, `petro@`, `maria@example.com`,
+пароль `Demo-pass-2026` (лише для локального стенда).

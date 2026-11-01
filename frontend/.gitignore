@@ -45,3 +45,8 @@ next-env.d.ts
 
 # Згенерована OpenAPI-схема (типи в src/lib/api/schema.d.ts комітимо)
 /openapi.json
+
+# Playwright
+/test-results/
+/playwright-report/
+/blob-report/

@@ -33,6 +33,7 @@ INSTALLED_APPS = [
     "mptt",
     "simple_history",
     # my apps
+    "apps.core",
     "apps.users",
     "apps.employees",
     "apps.company",

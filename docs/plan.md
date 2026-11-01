@@ -38,7 +38,7 @@
 - [x] PostgreSQL exclusion constraint: схвалені періоди одного працівника не перетинаються навіть при гонці
 - [x] Фільтри для календаря: `?date_from` / `?date_to` (перетин з періодом), `status`, `vacation_type`, `employee`
 
-## ⏭ Крок 3 — Frontend (Next.js / React)
+## ✅ Крок 3 — Frontend (Next.js / React)
 
 - [x] Каркас `frontend/` у цьому репозиторії: Next.js (App Router) + TypeScript, Tailwind + shadcn/ui, українська локаль
 - [x] Типи API генеруються з OpenAPI-схеми бекенду (`/api/schema/`) — без ручних DTO
@@ -53,10 +53,10 @@
   - [x] AI-асистент: чат із сесіями
   - [x] Адміністрування: облікові записи, ролі, призначення ролей, прийом на роботу
 - [x] Тести: Vitest + Testing Library
-- [ ] e2e — Playwright проти бекенду в docker-compose
-- [ ] Сервіс `frontend` у docker-compose; CORS для dev уже налаштовано
+- [x] e2e — Playwright проти бекенду в docker-compose (`docker-compose.e2e.yml`, демо-дані `seed_demo`)
+- [x] Сервіс `frontend` у docker-compose (standalone-образ); CORS для dev уже налаштовано
 
-## Крок 4 — Обладнання (`equipment`)
+## ⏭ Крок 4 — Обладнання (`equipment`)
 
 - [ ] `Equipment`: `serial_number` (унікальний), `name`, `description`
 - [ ] `EquipmentAssignment`: `equipment`, `employee`, `date_assigned`, `date_returned`
