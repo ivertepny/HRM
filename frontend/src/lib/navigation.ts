@@ -17,6 +17,7 @@ export const NAVIGATION: NavGroup[] = [
     items: [
       { href: "/profile", label: "Мій профіль" },
       { href: "/vacations", label: "Мої відпустки" },
+      { href: "/attendance", label: "Мій табель", permission: "attendance:write" },
       { href: "/assistant", label: "AI-асистент", permission: "ai:use" },
     ],
   },
@@ -29,6 +30,7 @@ export const NAVIGATION: NavGroup[] = [
         label: "Відпустки команди",
         permission: "vacations:manage",
       },
+      { href: "/attendance/report", label: "Табель команди", permission: "attendance:read" },
     ],
   },
   {

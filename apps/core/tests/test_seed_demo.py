@@ -2,6 +2,7 @@ import pytest
 from django.core.management import CommandError, call_command
 
 from apps.access.services import UserAccess
+from apps.attendance.models import AttendanceRecord
 from apps.employees.models import Employee
 from apps.equipment.models import Equipment, EquipmentAssignment
 from apps.users.models import User
@@ -19,6 +20,7 @@ def test_seed_demo_is_idempotent(settings):
     assert Employee.objects.count() == 4
     assert VacationRequest.objects.count() == 2
     assert Equipment.objects.count() == 6
+    assert AttendanceRecord.objects.count() == 15
     assert EquipmentAssignment.objects.filter(date_returned__isnull=True).count() == 3
 
 

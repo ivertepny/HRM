@@ -211,6 +211,71 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/attendance/records/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Відмітки присутності
+         * @description Свої — завжди; чужі — з attendance:read (у межах scope).
+         */
+        get: operations["attendance_records_list"];
+        put?: never;
+        /**
+         * Відмітитись
+         * @description Лише за себе (attendance:write); одна відмітка на день.
+         */
+        post: operations["attendance_records_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/attendance/records/{id}/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["attendance_records_retrieve"];
+        put?: never;
+        post?: never;
+        /** Видалити свою відмітку */
+        delete: operations["attendance_records_destroy"];
+        options?: never;
+        head?: never;
+        /**
+         * Виправити свою відмітку
+         * @description Лише власну і не старшу за ATTENDANCE_EDIT_DAYS днів.
+         */
+        patch: operations["attendance_records_partial_update"];
+        trace?: never;
+    };
+    "/api/attendance/records/report/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Місячний звіт
+         * @description Працівники в межах scope attendance:read: дні в офісі, віддалено, вихідні, відпустка, пропущені робочі дні, години.
+         */
+        get: operations["attendance_records_report_retrieve"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/company/units/": {
         parameters: {
             query?: never;
@@ -873,6 +938,50 @@ export interface components {
             category: components["schemas"]["EquipmentCategoryEnum"];
             serial_number: string;
         };
+        AttendanceEmployee: {
+            id: number;
+            name: string;
+        };
+        AttendanceEmployeeRequest: {
+            id: number;
+            name: string;
+        };
+        /** @description Відмітка за день. Подається лише за себе; дата за замовчуванням — сьогодні. */
+        AttendanceRecord: {
+            readonly id?: number;
+            readonly employee?: components["schemas"]["AttendanceEmployee"];
+            /** Format: date */
+            date?: string;
+            status: components["schemas"]["AttendanceStatusEnum"];
+            /** Format: time */
+            time_start?: string | null;
+            /** Format: time */
+            time_end?: string | null;
+            /** Format: double */
+            readonly hours?: number | null;
+            comment?: string;
+            readonly editable?: boolean;
+            /** Format: date-time */
+            readonly updated_at?: string;
+        };
+        /** @description Відмітка за день. Подається лише за себе; дата за замовчуванням — сьогодні. */
+        AttendanceRecordRequest: {
+            /** Format: date */
+            date?: string;
+            status: components["schemas"]["AttendanceStatusEnum"];
+            /** Format: time */
+            time_start?: string | null;
+            /** Format: time */
+            time_end?: string | null;
+            comment?: string;
+        };
+        /**
+         * @description * `office` - В офісі
+         *     * `remote` - Віддалено
+         *     * `off` - Не працює
+         * @enum {string}
+         */
+        AttendanceStatusEnum: "office" | "remote" | "off";
         /** @enum {unknown} */
         BlankEnum: "";
         /** @description Тільки читання: записи створюються автоматично при зміні Employee. */
@@ -1119,6 +1228,21 @@ export interface components {
             previous?: string | null;
             results: components["schemas"]["AIQuery"][];
         };
+        PaginatedAttendanceRecordList: {
+            /** @example 123 */
+            count: number;
+            /**
+             * Format: uri
+             * @example http://api.example.org/accounts/?page=4
+             */
+            next?: string | null;
+            /**
+             * Format: uri
+             * @example http://api.example.org/accounts/?page=2
+             */
+            previous?: string | null;
+            results: components["schemas"]["AttendanceRecord"][];
+        };
         PaginatedCareerHistoryList: {
             /** @example 123 */
             count: number;
@@ -1299,6 +1423,17 @@ export interface components {
             previous?: string | null;
             results: components["schemas"]["VacationRequest"][];
         };
+        /** @description Відмітка за день. Подається лише за себе; дата за замовчуванням — сьогодні. */
+        PatchedAttendanceRecordRequest: {
+            /** Format: date */
+            date?: string;
+            status?: components["schemas"]["AttendanceStatusEnum"];
+            /** Format: time */
+            time_start?: string | null;
+            /** Format: time */
+            time_end?: string | null;
+            comment?: string;
+        };
         PatchedChatSessionRequest: {
             name?: string;
         };
@@ -1387,6 +1522,24 @@ export interface components {
             first_name?: string | null;
             last_name?: string | null;
             password: string;
+        };
+        Report: {
+            month: string;
+            working_days: number;
+            rows: components["schemas"]["ReportRow"][];
+        };
+        ReportRow: {
+            employee: components["schemas"]["AttendanceEmployee"];
+            unit: string;
+            office: number;
+            remote: number;
+            off: number;
+            /** @description Робочі дні схваленої відпустки */
+            vacation: number;
+            /** @description Робочі дні без відмітки і без відпустки (до сьогодні) */
+            missing: number;
+            /** Format: double */
+            hours: number;
         };
         ReturnRequest: {
             /** Format: date */
@@ -2053,6 +2206,159 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["PaginatedAIQueryList"];
+                };
+            };
+        };
+    };
+    attendance_records_list: {
+        parameters: {
+            query?: {
+                date_from?: string;
+                date_to?: string;
+                employee?: number;
+                /** @description A page number within the paginated result set. */
+                page?: number;
+                /** @description Number of results to return per page. */
+                page_size?: number;
+                /**
+                 * @description * `office` - В офісі
+                 *     * `remote` - Віддалено
+                 *     * `off` - Не працює
+                 */
+                status?: "off" | "office" | "remote";
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PaginatedAttendanceRecordList"];
+                };
+            };
+        };
+    };
+    attendance_records_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AttendanceRecordRequest"];
+                "application/x-www-form-urlencoded": components["schemas"]["AttendanceRecordRequest"];
+                "multipart/form-data": components["schemas"]["AttendanceRecordRequest"];
+            };
+        };
+        responses: {
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AttendanceRecord"];
+                };
+            };
+        };
+    };
+    attendance_records_retrieve: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description A unique integer value identifying this attendance record. */
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AttendanceRecord"];
+                };
+            };
+        };
+    };
+    attendance_records_destroy: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description A unique integer value identifying this attendance record. */
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description No response body */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    attendance_records_partial_update: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description A unique integer value identifying this attendance record. */
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["PatchedAttendanceRecordRequest"];
+                "application/x-www-form-urlencoded": components["schemas"]["PatchedAttendanceRecordRequest"];
+                "multipart/form-data": components["schemas"]["PatchedAttendanceRecordRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AttendanceRecord"];
+                };
+            };
+        };
+    };
+    attendance_records_report_retrieve: {
+        parameters: {
+            query?: {
+                /** @description YYYY-MM */
+                month?: string;
+                /** @description Підрозділ разом з дочірніми */
+                unit?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Report"];
                 };
             };
         };

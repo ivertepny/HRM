@@ -49,8 +49,8 @@ PERMISSION_CATALOG = {
         "manage": "Облік і видача обладнання",
     },
     "attendance": {
-        "read": "Перегляд присутності",
-        "write": "Відмітка присутності",
+        "read": "Перегляд табеля і місячного звіту",
+        "write": "Відмітка власної присутності",
     },
 }
 
@@ -84,6 +84,7 @@ SYSTEM_ROLES = {
             "employees:read",
             "company:read",
             "vacations:write",
+            "attendance:write",
             "ai:use",
         ],
     },

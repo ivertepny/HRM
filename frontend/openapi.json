@@ -824,6 +824,298 @@
                 }
             }
         },
+        "/api/attendance/records/": {
+            "get": {
+                "operationId": "attendance_records_list",
+                "description": "Свої — завжди; чужі — з attendance:read (у межах scope).",
+                "summary": "Відмітки присутності",
+                "parameters": [
+                    {
+                        "in": "query",
+                        "name": "date_from",
+                        "schema": {
+                            "type": "string",
+                            "format": "date"
+                        }
+                    },
+                    {
+                        "in": "query",
+                        "name": "date_to",
+                        "schema": {
+                            "type": "string",
+                            "format": "date"
+                        }
+                    },
+                    {
+                        "in": "query",
+                        "name": "employee",
+                        "schema": {
+                            "type": "integer"
+                        }
+                    },
+                    {
+                        "name": "page",
+                        "required": false,
+                        "in": "query",
+                        "description": "A page number within the paginated result set.",
+                        "schema": {
+                            "type": "integer"
+                        }
+                    },
+                    {
+                        "name": "page_size",
+                        "required": false,
+                        "in": "query",
+                        "description": "Number of results to return per page.",
+                        "schema": {
+                            "type": "integer"
+                        }
+                    },
+                    {
+                        "in": "query",
+                        "name": "status",
+                        "schema": {
+                            "type": "string",
+                            "enum": [
+                                "off",
+                                "office",
+                                "remote"
+                            ]
+                        },
+                        "description": "* `office` - В офісі\n* `remote` - Віддалено\n* `off` - Не працює"
+                    }
+                ],
+                "tags": [
+                    "Attendance"
+                ],
+                "security": [
+                    {
+                        "jwtAuth": []
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/PaginatedAttendanceRecordList"
+                                }
+                            }
+                        },
+                        "description": ""
+                    }
+                }
+            },
+            "post": {
+                "operationId": "attendance_records_create",
+                "description": "Лише за себе (attendance:write); одна відмітка на день.",
+                "summary": "Відмітитись",
+                "tags": [
+                    "Attendance"
+                ],
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/AttendanceRecordRequest"
+                            }
+                        },
+                        "application/x-www-form-urlencoded": {
+                            "schema": {
+                                "$ref": "#/components/schemas/AttendanceRecordRequest"
+                            }
+                        },
+                        "multipart/form-data": {
+                            "schema": {
+                                "$ref": "#/components/schemas/AttendanceRecordRequest"
+                            }
+                        }
+                    },
+                    "required": true
+                },
+                "security": [
+                    {
+                        "jwtAuth": []
+                    }
+                ],
+                "responses": {
+                    "201": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/AttendanceRecord"
+                                }
+                            }
+                        },
+                        "description": ""
+                    }
+                }
+            }
+        },
+        "/api/attendance/records/{id}/": {
+            "get": {
+                "operationId": "attendance_records_retrieve",
+                "parameters": [
+                    {
+                        "in": "path",
+                        "name": "id",
+                        "schema": {
+                            "type": "integer"
+                        },
+                        "description": "A unique integer value identifying this attendance record.",
+                        "required": true
+                    }
+                ],
+                "tags": [
+                    "Attendance"
+                ],
+                "security": [
+                    {
+                        "jwtAuth": []
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/AttendanceRecord"
+                                }
+                            }
+                        },
+                        "description": ""
+                    }
+                }
+            },
+            "patch": {
+                "operationId": "attendance_records_partial_update",
+                "description": "Лише власну і не старшу за ATTENDANCE_EDIT_DAYS днів.",
+                "summary": "Виправити свою відмітку",
+                "parameters": [
+                    {
+                        "in": "path",
+                        "name": "id",
+                        "schema": {
+                            "type": "integer"
+                        },
+                        "description": "A unique integer value identifying this attendance record.",
+                        "required": true
+                    }
+                ],
+                "tags": [
+                    "Attendance"
+                ],
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/PatchedAttendanceRecordRequest"
+                            }
+                        },
+                        "application/x-www-form-urlencoded": {
+                            "schema": {
+                                "$ref": "#/components/schemas/PatchedAttendanceRecordRequest"
+                            }
+                        },
+                        "multipart/form-data": {
+                            "schema": {
+                                "$ref": "#/components/schemas/PatchedAttendanceRecordRequest"
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "jwtAuth": []
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/AttendanceRecord"
+                                }
+                            }
+                        },
+                        "description": ""
+                    }
+                }
+            },
+            "delete": {
+                "operationId": "attendance_records_destroy",
+                "summary": "Видалити свою відмітку",
+                "parameters": [
+                    {
+                        "in": "path",
+                        "name": "id",
+                        "schema": {
+                            "type": "integer"
+                        },
+                        "description": "A unique integer value identifying this attendance record.",
+                        "required": true
+                    }
+                ],
+                "tags": [
+                    "Attendance"
+                ],
+                "security": [
+                    {
+                        "jwtAuth": []
+                    }
+                ],
+                "responses": {
+                    "204": {
+                        "description": "No response body"
+                    }
+                }
+            }
+        },
+        "/api/attendance/records/report/": {
+            "get": {
+                "operationId": "attendance_records_report_retrieve",
+                "description": "Працівники в межах scope attendance:read: дні в офісі, віддалено, вихідні, відпустка, пропущені робочі дні, години.",
+                "summary": "Місячний звіт",
+                "parameters": [
+                    {
+                        "in": "query",
+                        "name": "month",
+                        "schema": {
+                            "type": "string"
+                        },
+                        "description": "YYYY-MM"
+                    },
+                    {
+                        "in": "query",
+                        "name": "unit",
+                        "schema": {
+                            "type": "integer"
+                        },
+                        "description": "Підрозділ разом з дочірніми"
+                    }
+                ],
+                "tags": [
+                    "Attendance"
+                ],
+                "security": [
+                    {
+                        "jwtAuth": []
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Report"
+                                }
+                            }
+                        },
+                        "description": ""
+                    }
+                }
+            }
+        },
         "/api/company/units/": {
             "get": {
                 "operationId": "company_units_list",
@@ -3658,6 +3950,133 @@
                     "serial_number"
                 ]
             },
+            "AttendanceEmployee": {
+                "type": "object",
+                "properties": {
+                    "id": {
+                        "type": "integer"
+                    },
+                    "name": {
+                        "type": "string"
+                    }
+                },
+                "required": [
+                    "id",
+                    "name"
+                ]
+            },
+            "AttendanceEmployeeRequest": {
+                "type": "object",
+                "properties": {
+                    "id": {
+                        "type": "integer"
+                    },
+                    "name": {
+                        "type": "string",
+                        "minLength": 1
+                    }
+                },
+                "required": [
+                    "id",
+                    "name"
+                ]
+            },
+            "AttendanceRecord": {
+                "type": "object",
+                "description": "Відмітка за день. Подається лише за себе; дата за замовчуванням — сьогодні.",
+                "properties": {
+                    "id": {
+                        "type": "integer",
+                        "readOnly": true
+                    },
+                    "employee": {
+                        "allOf": [
+                            {
+                                "$ref": "#/components/schemas/AttendanceEmployee"
+                            }
+                        ],
+                        "readOnly": true
+                    },
+                    "date": {
+                        "type": "string",
+                        "format": "date"
+                    },
+                    "status": {
+                        "$ref": "#/components/schemas/AttendanceStatusEnum"
+                    },
+                    "time_start": {
+                        "type": "string",
+                        "format": "time",
+                        "nullable": true
+                    },
+                    "time_end": {
+                        "type": "string",
+                        "format": "time",
+                        "nullable": true
+                    },
+                    "hours": {
+                        "type": "number",
+                        "format": "double",
+                        "readOnly": true,
+                        "nullable": true
+                    },
+                    "comment": {
+                        "type": "string",
+                        "maxLength": 500
+                    },
+                    "editable": {
+                        "type": "boolean",
+                        "readOnly": true
+                    },
+                    "updated_at": {
+                        "type": "string",
+                        "format": "date-time",
+                        "readOnly": true
+                    }
+                },
+                "required": [
+                    "status"
+                ]
+            },
+            "AttendanceRecordRequest": {
+                "type": "object",
+                "description": "Відмітка за день. Подається лише за себе; дата за замовчуванням — сьогодні.",
+                "properties": {
+                    "date": {
+                        "type": "string",
+                        "format": "date"
+                    },
+                    "status": {
+                        "$ref": "#/components/schemas/AttendanceStatusEnum"
+                    },
+                    "time_start": {
+                        "type": "string",
+                        "format": "time",
+                        "nullable": true
+                    },
+                    "time_end": {
+                        "type": "string",
+                        "format": "time",
+                        "nullable": true
+                    },
+                    "comment": {
+                        "type": "string",
+                        "maxLength": 500
+                    }
+                },
+                "required": [
+                    "status"
+                ]
+            },
+            "AttendanceStatusEnum": {
+                "enum": [
+                    "office",
+                    "remote",
+                    "off"
+                ],
+                "type": "string",
+                "description": "* `office` - В офісі\n* `remote` - Віддалено\n* `off` - Не працює"
+            },
             "BlankEnum": {
                 "enum": [
                     ""
@@ -4392,6 +4811,37 @@
                     }
                 }
             },
+            "PaginatedAttendanceRecordList": {
+                "type": "object",
+                "required": [
+                    "count",
+                    "results"
+                ],
+                "properties": {
+                    "count": {
+                        "type": "integer",
+                        "example": 123
+                    },
+                    "next": {
+                        "type": "string",
+                        "nullable": true,
+                        "format": "uri",
+                        "example": "http://api.example.org/accounts/?page=4"
+                    },
+                    "previous": {
+                        "type": "string",
+                        "nullable": true,
+                        "format": "uri",
+                        "example": "http://api.example.org/accounts/?page=2"
+                    },
+                    "results": {
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/components/schemas/AttendanceRecord"
+                        }
+                    }
+                }
+            },
             "PaginatedCareerHistoryList": {
                 "type": "object",
                 "required": [
@@ -4764,6 +5214,33 @@
                     }
                 }
             },
+            "PatchedAttendanceRecordRequest": {
+                "type": "object",
+                "description": "Відмітка за день. Подається лише за себе; дата за замовчуванням — сьогодні.",
+                "properties": {
+                    "date": {
+                        "type": "string",
+                        "format": "date"
+                    },
+                    "status": {
+                        "$ref": "#/components/schemas/AttendanceStatusEnum"
+                    },
+                    "time_start": {
+                        "type": "string",
+                        "format": "time",
+                        "nullable": true
+                    },
+                    "time_end": {
+                        "type": "string",
+                        "format": "time",
+                        "nullable": true
+                    },
+                    "comment": {
+                        "type": "string",
+                        "maxLength": 500
+                    }
+                }
+            },
             "PatchedChatSessionRequest": {
                 "type": "object",
                 "properties": {
@@ -5063,6 +5540,70 @@
                 "required": [
                     "email",
                     "password"
+                ]
+            },
+            "Report": {
+                "type": "object",
+                "properties": {
+                    "month": {
+                        "type": "string"
+                    },
+                    "working_days": {
+                        "type": "integer"
+                    },
+                    "rows": {
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/components/schemas/ReportRow"
+                        }
+                    }
+                },
+                "required": [
+                    "month",
+                    "rows",
+                    "working_days"
+                ]
+            },
+            "ReportRow": {
+                "type": "object",
+                "properties": {
+                    "employee": {
+                        "$ref": "#/components/schemas/AttendanceEmployee"
+                    },
+                    "unit": {
+                        "type": "string"
+                    },
+                    "office": {
+                        "type": "integer"
+                    },
+                    "remote": {
+                        "type": "integer"
+                    },
+                    "off": {
+                        "type": "integer"
+                    },
+                    "vacation": {
+                        "type": "integer",
+                        "description": "Робочі дні схваленої відпустки"
+                    },
+                    "missing": {
+                        "type": "integer",
+                        "description": "Робочі дні без відмітки і без відпустки (до сьогодні)"
+                    },
+                    "hours": {
+                        "type": "number",
+                        "format": "double"
+                    }
+                },
+                "required": [
+                    "employee",
+                    "hours",
+                    "missing",
+                    "off",
+                    "office",
+                    "remote",
+                    "unit",
+                    "vacation"
                 ]
             },
             "ReturnRequest": {

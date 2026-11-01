@@ -41,6 +41,7 @@ INSTALLED_APPS = [
     "apps.access",
     "apps.vacations",
     "apps.equipment",
+    "apps.attendance",
 ]
 
 MIDDLEWARE = [
@@ -118,7 +119,8 @@ AUTH_PASSWORD_VALIDATORS = [
 
 LANGUAGE_CODE = "uk"
 
-TIME_ZONE = "UTC"
+# «Сьогодні» для відпусток і табеля рахується в часовому поясі компанії
+TIME_ZONE = env("TIME_ZONE", default="Europe/Kyiv")
 
 USE_I18N = True
 
@@ -157,6 +159,9 @@ CACHES = {
 # Скільки секунд тримати в кеші обчислені права користувача
 ACCESS_CACHE_TIMEOUT = 300
 
+# Скільки днів назад працівник може виправляти свій табель
+ATTENDANCE_EDIT_DAYS = env.int("ATTENDANCE_EDIT_DAYS", default=7)
+
 # Default primary key field type
 # https://docs.djangoproject.com/en/5.2/ref/settings/#default-auto-field
 
@@ -191,6 +196,7 @@ SPECTACULAR_SETTINGS = {
         "VacationStatusEnum": "apps.vacations.models.VacationRequest.Status",
         "EquipmentStateEnum": "apps.equipment.models.Equipment.State",
         "EquipmentCategoryEnum": "apps.equipment.models.Equipment.Category",
+        "AttendanceStatusEnum": "apps.attendance.models.AttendanceRecord.Status",
         "CustomTypeEnum": [
             ("OFFICE", "Центральний офіс"),
             ("DEPARTMENT", "Департамент"),

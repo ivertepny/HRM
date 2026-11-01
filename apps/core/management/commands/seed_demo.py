@@ -10,6 +10,7 @@ from django.utils import timezone
 
 from apps.access.models import Role, UserRole
 from apps.access.services import grant_default_role
+from apps.attendance.models import AttendanceRecord
 from apps.company.models import StructuralUnit
 from apps.employees.models import Employee, Position
 from apps.equipment.models import Equipment
@@ -125,6 +126,7 @@ class Command(BaseCommand):
 
         self._vacations(employees)
         self._equipment(employees)
+        self._attendance(employees)
         self.stdout.write(
             self.style.SUCCESS(
                 f"Демо-дані готові. Користувачі: {', '.join(p[0] for p in PEOPLE)}; "
@@ -197,3 +199,28 @@ class Command(BaseCommand):
         )
         if created:
             phone.write_off(datetime.date(2025, 6, 1))
+
+    def _attendance(self, employees):
+        """Табель за попередні 5 робочих днів (сьогодні — без відмітки)."""
+        statuses = {
+            "olena@example.com": ["office", "office", "remote", "office", "remote"],
+            "petro@example.com": ["remote", "remote", "office", "remote", "off"],
+            "maria@example.com": ["office", "office", "office", "remote", "office"],
+        }
+        days, day = [], timezone.localdate()
+        while len(days) < 5:
+            day -= datetime.timedelta(days=1)
+            if day.weekday() < 5:
+                days.append(day)
+        for email, plan in statuses.items():
+            for date, status in zip(days, plan, strict=True):
+                times = (
+                    {}
+                    if status == "off"
+                    else {"time_start": datetime.time(9), "time_end": datetime.time(18)}
+                )
+                AttendanceRecord.objects.get_or_create(
+                    employee=employees[email],
+                    date=date,
+                    defaults={"status": status, **times},
+                )

@@ -433,3 +433,63 @@ export function useEquipmentOperation(id: number) {
     onSuccess: invalidate,
   });
 }
+
+// --- табель --------------------------------------------------------------------
+
+type AttendanceQuery = NonNullable<
+  import("./api/schema").operations["attendance_records_list"]["parameters"]["query"]
+>;
+
+export function useAttendance(query: AttendanceQuery, enabled = true) {
+  return useQuery({
+    queryKey: ["attendance", "records", query],
+    enabled,
+    queryFn: async () =>
+      (
+        await unwrap(
+          api.GET("/api/attendance/records/", { params: { query: { page_size: 100, ...query } } }),
+        )
+      ).results,
+  });
+}
+
+function useInvalidateAttendance() {
+  const client = useQueryClient();
+  return () => client.invalidateQueries({ queryKey: ["attendance"] });
+}
+
+export function useMarkAttendance() {
+  const invalidate = useInvalidateAttendance();
+  return useMutation({
+    mutationFn: (body: Schemas["AttendanceRecordRequest"]) =>
+      unwrap(api.POST("/api/attendance/records/", { body })),
+    onSuccess: invalidate,
+  });
+}
+
+export function useUpdateAttendance() {
+  const invalidate = useInvalidateAttendance();
+  return useMutation({
+    mutationFn: ({ id, body }: { id: number; body: Schemas["PatchedAttendanceRecordRequest"] }) =>
+      unwrap(api.PATCH("/api/attendance/records/{id}/", { params: { path: { id } }, body })),
+    onSuccess: invalidate,
+  });
+}
+
+export function useDeleteAttendance() {
+  const invalidate = useInvalidateAttendance();
+  return useMutation({
+    mutationFn: (id: number) =>
+      unwrap(api.DELETE("/api/attendance/records/{id}/", { params: { path: { id } } })),
+    onSuccess: invalidate,
+  });
+}
+
+export function useAttendanceReport(month: string, unit?: number) {
+  return useQuery({
+    queryKey: ["attendance", "report", month, unit],
+    queryFn: () =>
+      unwrap(api.GET("/api/attendance/records/report/", { params: { query: { month, unit } } })),
+    placeholderData: (previous) => previous,
+  });
+}
