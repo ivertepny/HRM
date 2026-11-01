@@ -1516,6 +1516,14 @@
                 "parameters": [
                     {
                         "in": "query",
+                        "name": "active",
+                        "schema": {
+                            "type": "boolean"
+                        },
+                        "description": "Лише ті, хто працює зараз (без звільнених)"
+                    },
+                    {
+                        "in": "query",
                         "name": "level",
                         "schema": {
                             "type": "string",
@@ -1554,11 +1562,28 @@
                         }
                     },
                     {
+                        "name": "search",
+                        "required": false,
+                        "in": "query",
+                        "description": "A search term.",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
                         "in": "query",
                         "name": "structural_unit",
                         "schema": {
                             "type": "integer"
                         }
+                    },
+                    {
+                        "in": "query",
+                        "name": "unit",
+                        "schema": {
+                            "type": "string"
+                        },
+                        "description": "Підрозділ разом з дочірніми"
                     },
                     {
                         "in": "query",

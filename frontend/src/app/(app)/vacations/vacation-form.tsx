@@ -5,6 +5,7 @@ import { useForm, useWatch } from "react-hook-form";
 import { toast } from "sonner";
 import { z } from "zod";
 
+import { NativeSelect } from "@/components/app/native-select";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -37,9 +38,6 @@ const schema = z
   });
 
 type Values = z.infer<typeof schema>;
-
-const selectClass =
-  "h-10 w-full rounded-md border border-input bg-transparent px-3 text-sm outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50";
 
 export function VacationForm() {
   const submit = useSubmitVacation();
@@ -87,13 +85,13 @@ export function VacationForm() {
     <form onSubmit={handleSubmit(onSubmit)} noValidate className="grid gap-5">
       <div className="grid gap-2">
         <Label htmlFor="vacation_type">Тип</Label>
-        <select id="vacation_type" className={selectClass} {...register("vacation_type")}>
+        <NativeSelect id="vacation_type" {...register("vacation_type")}>
           {(Object.keys(TYPE_LABELS) as VacationType[]).map((type) => (
             <option key={type} value={type}>
               {TYPE_LABELS[type]}
             </option>
           ))}
-        </select>
+        </NativeSelect>
       </div>
 
       <div className="grid gap-5 sm:grid-cols-2">

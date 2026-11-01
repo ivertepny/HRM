@@ -2,10 +2,12 @@ from django.db.models import Q
 from django_filters.rest_framework import DjangoFilterBackend
 from drf_spectacular.utils import extend_schema, extend_schema_view
 from rest_framework import mixins, viewsets
+from rest_framework.filters import SearchFilter
 
 from apps.access.permissions import HasPermission, ensure_permission
 from apps.access.services import scope_queryset
 
+from .filters import EmployeeFilter
 from .models import CareerHistory, Employee, EmployeeDocument, Position
 from .serializers import (
     CareerHistorySerializer,
@@ -47,8 +49,15 @@ class EmployeeViewSet(viewsets.ModelViewSet):
         "write": "employees:write",
         "destroy": "employees:delete",
     }
-    filter_backends = [DjangoFilterBackend]
-    filterset_fields = ["user", "structural_unit", "position", "level"]
+    filter_backends = [DjangoFilterBackend, SearchFilter]
+    filterset_class = EmployeeFilter
+    # ?search= — ім'я, прізвище, пошта або посада
+    search_fields = [
+        "user__first_name",
+        "user__last_name",
+        "user__email",
+        "position__name",
+    ]
 
     def get_queryset(self):
         return scope_queryset(

@@ -1,9 +1,9 @@
 "use client";
 
 import Link from "next/link";
-import { useState } from "react";
+import { Suspense, useState } from "react";
 
-import { SidebarNav } from "./sidebar-nav";
+import { SidebarNav, SidebarNavSkeleton } from "./sidebar-nav";
 import { UserMenu } from "./user-menu";
 
 /** Сірий «стіл» з навігацією зліва; вміст сторінки — білий аркуш. */
@@ -44,7 +44,9 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           id="sidebar-nav"
           className={`${menuOpen ? "block" : "hidden"} px-1 pb-6 md:mt-9 md:block md:px-1 md:pb-0`}
         >
-          <SidebarNav onNavigate={() => setMenuOpen(false)} />
+          <Suspense fallback={<SidebarNavSkeleton />}>
+            <SidebarNav onNavigate={() => setMenuOpen(false)} />
+          </Suspense>
         </div>
       </aside>
 

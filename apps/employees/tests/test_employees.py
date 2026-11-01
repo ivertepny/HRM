@@ -125,3 +125,47 @@ def test_user_with_employee_profile_cannot_be_deleted(auth_client):
     response = auth_client.delete(f"/api/users/profile/{employee.user.id}/")
 
     assert response.status_code == 409
+
+
+def test_search_by_name_email_or_position(auth_client):
+    from apps.users.tests.factories import UserFactory
+
+    olena = EmployeeFactory(
+        user=UserFactory(first_name="Олена", last_name="Коваль"),
+        position=PositionFactory(name="Аналітик"),
+    )
+    EmployeeFactory(user=UserFactory(first_name="Петро", last_name="Шевчук"))
+
+    for term in ("Коваль", "олена", olena.user.email, "аналіт"):
+        results = auth_client.get("/api/employees/employees/", {"search": term}).json()[
+            "results"
+        ]
+        assert [e["id"] for e in results] == [olena.id], term
+
+
+def test_unit_filter_includes_descendant_units(auth_client):
+    it = StructuralUnitFactory(name="IT")
+    backend = StructuralUnitFactory(name="Backend", parent=it)
+    in_it = EmployeeFactory(structural_unit=it)
+    in_backend = EmployeeFactory(structural_unit=backend)
+    EmployeeFactory(structural_unit=StructuralUnitFactory(name="Sales"))
+
+    results = auth_client.get("/api/employees/employees/", {"unit": it.id}).json()[
+        "results"
+    ]
+
+    assert {e["id"] for e in results} == {in_it.id, in_backend.id}
+
+
+def test_active_filter_excludes_fired(auth_client):
+    import datetime
+
+    working = EmployeeFactory()
+    leaving_later = EmployeeFactory(date_fired=datetime.date(2099, 1, 1))
+    EmployeeFactory(date_fired=datetime.date(2020, 1, 1))
+
+    results = auth_client.get("/api/employees/employees/", {"active": "true"}).json()[
+        "results"
+    ]
+
+    assert {e["id"] for e in results} == {working.id, leaving_later.id}

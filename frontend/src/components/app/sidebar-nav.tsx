@@ -8,19 +8,22 @@ import { cn } from "@/lib/utils";
 import { activeHref, visibleNavigation } from "@/lib/navigation";
 import { useMyAccess } from "@/lib/queries";
 
+export function SidebarNavSkeleton() {
+  return (
+    <div className="grid gap-3 px-3" aria-busy="true" aria-label="Завантаження меню">
+      {Array.from({ length: 5 }, (_, i) => (
+        <Skeleton key={i} className="h-5 w-3/4 bg-sidebar-accent" />
+      ))}
+    </div>
+  );
+}
+
+/** Читає поточний шлях — на динамічних маршрутах рендерити всередині <Suspense>. */
 export function SidebarNav({ onNavigate }: { onNavigate?: () => void }) {
   const pathname = usePathname();
   const { data: access, isPending } = useMyAccess();
 
-  if (isPending) {
-    return (
-      <div className="grid gap-3 px-3" aria-busy="true" aria-label="Завантаження меню">
-        {Array.from({ length: 5 }, (_, i) => (
-          <Skeleton key={i} className="h-5 w-3/4 bg-sidebar-accent" />
-        ))}
-      </div>
-    );
-  }
+  if (isPending) return <SidebarNavSkeleton />;
 
   const current = activeHref(pathname);
 
