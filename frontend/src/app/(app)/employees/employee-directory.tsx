@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useState } from "react";
 
 import { NativeSelect } from "@/components/app/native-select";
 import { PageHeader } from "@/components/app/section";
@@ -13,6 +13,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Skeleton } from "@/components/ui/skeleton";
 import { canAnywhere } from "@/lib/access";
+import { useDebounced } from "@/lib/hooks";
 import { fileHref, unitPath } from "@/lib/employees";
 import { formatDate, LEVEL_LABELS, PEOPLE, plural } from "@/lib/format";
 import { useEmployees, useMyAccess, useUnits } from "@/lib/queries";
@@ -20,15 +21,6 @@ import { useEmployees, useMyAccess, useUnits } from "@/lib/queries";
 const PAGE_SIZE = 20;
 
 type Level = "trainee" | "junior" | "middle" | "senior";
-
-function useDebounced<T>(value: T, delay = 300) {
-  const [debounced, setDebounced] = useState(value);
-  useEffect(() => {
-    const timer = setTimeout(() => setDebounced(value), delay);
-    return () => clearTimeout(timer);
-  }, [value, delay]);
-  return debounced;
-}
 
 export function EmployeeDirectory() {
   const access = useMyAccess();

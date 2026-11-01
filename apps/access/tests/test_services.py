@@ -104,7 +104,7 @@ def test_expired_role_is_ignored(grant):
 
 
 def test_inactive_user_has_no_permissions(grant):
-    user = UserFactory(is_active=False)
+    user = UserFactory(status="inactive")  # is_active виводиться зі статусу
     grant(user, "*:*")
 
     assert not UserAccess(user).has("employees:read")

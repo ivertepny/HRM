@@ -30,8 +30,8 @@ class User(AbstractBaseUser, PermissionsMixin):
     last_name = models.CharField(max_length=255, blank=True, null=True)
 
     STATUS_CHOICES = [
-        ("active", "Active"),
-        ("inactive", "Inactive"),
+        ("active", "Активний"),
+        ("inactive", "Вимкнений"),
     ]
     status = models.CharField(max_length=10, choices=STATUS_CHOICES, default="active")
 
@@ -50,3 +50,12 @@ class User(AbstractBaseUser, PermissionsMixin):
 
     def __str__(self):
         return self.email
+
+    def save(self, *args, **kwargs):
+        # Вхід і JWT перевіряють is_active — тримаємо його в згоді зі статусом,
+        # інакше «вимкнений» акаунт міг би далі входити
+        self.is_active = self.status == "active"
+        update_fields = kwargs.get("update_fields")
+        if update_fields is not None and "status" in update_fields:
+            kwargs["update_fields"] = {*update_fields, "is_active"}
+        super().save(*args, **kwargs)

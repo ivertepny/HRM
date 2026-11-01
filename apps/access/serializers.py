@@ -24,11 +24,34 @@ class RoleSerializer(serializers.ModelSerializer):
     permissions = serializers.SlugRelatedField(
         many=True, slug_field="codename", queryset=Permission.objects.all()
     )
+    users_count = serializers.SerializerMethodField(
+        help_text="Користувачі з активним призначенням цієї ролі"
+    )
 
     class Meta:
         model = Role
-        fields = ["id", "name", "description", "permissions", "is_system", "created_at"]
+        fields = [
+            "id",
+            "name",
+            "description",
+            "permissions",
+            "is_system",
+            "users_count",
+            "created_at",
+        ]
         read_only_fields = ["is_system", "created_at"]
+
+    def get_users_count(self, obj) -> int:
+        annotated = getattr(obj, "users_count", None)
+        if annotated is not None:
+            return annotated
+        return (
+            obj.assignments.active()
+            .filter(user__is_active=True)
+            .values("user")
+            .distinct()
+            .count()
+        )
 
     def validate_name(self, value):
         if self.instance and self.instance.is_system and value != self.instance.name:
@@ -49,6 +72,9 @@ class RoleSerializer(serializers.ModelSerializer):
 class UserRoleSerializer(serializers.ModelSerializer):
     user_email = serializers.EmailField(source="user.email", read_only=True)
     role_name = serializers.CharField(source="role.name", read_only=True)
+    structural_unit_name = serializers.CharField(
+        source="structural_unit.name", read_only=True, default=None
+    )
     structural_unit = serializers.PrimaryKeyRelatedField(
         queryset=StructuralUnit.objects.filter(is_active=True),
         required=False,
@@ -66,6 +92,7 @@ class UserRoleSerializer(serializers.ModelSerializer):
             "role",
             "role_name",
             "structural_unit",
+            "structural_unit_name",
             "granted_by",
             "granted_at",
             "expires_at",

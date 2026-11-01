@@ -1,3 +1,5 @@
+from django.db.models import Count, Q
+from django.utils import timezone
 from django_filters.rest_framework import DjangoFilterBackend
 from drf_spectacular.utils import extend_schema, inline_serializer
 from rest_framework import mixins, serializers, viewsets
@@ -34,6 +36,22 @@ class PermissionViewSet(viewsets.ReadOnlyModelViewSet):
 
 class RoleViewSet(viewsets.ModelViewSet):
     queryset = Role.objects.prefetch_related("permissions")
+
+    def get_queryset(self):
+        # Діючі призначення активних користувачів (вимкнені прав не мають)
+        active = (
+            Q(assignments__expires_at__isnull=True)
+            | Q(assignments__expires_at__gt=timezone.now())
+        ) & Q(assignments__user__is_active=True)
+        return (
+            super()
+            .get_queryset()
+            .annotate(
+                users_count=Count("assignments__user", filter=active, distinct=True)
+            )
+            .order_by("name")
+        )
+
     serializer_class = RoleSerializer
     permission_classes = [HasPermission]
     required_permissions = ACCESS_PERMISSIONS

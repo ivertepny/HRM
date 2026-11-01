@@ -1,7 +1,10 @@
 from django.db.models import Q
 from django.utils.timezone import now
+from django_filters.rest_framework import DjangoFilterBackend
+from drf_spectacular.utils import extend_schema, extend_schema_view
 from rest_framework import generics, status
 from rest_framework.exceptions import ValidationError
+from rest_framework.filters import SearchFilter
 from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
@@ -11,6 +14,7 @@ from rest_framework_simplejwt.tokens import RefreshToken
 from apps.access.permissions import HasPermission
 from apps.access.services import get_access, grant_default_role, scope_queryset
 
+from .filters import UserFilter
 from .models import User
 from .serializers import (
     LoginSerializer,
@@ -98,7 +102,7 @@ class UserScopeMixin:
     def get_queryset(self):
         return scope_queryset(
             self.request,
-            User.objects.order_by("id"),
+            User.objects.select_related("employee_profile").order_by("id"),
             "users:read",
             unit_field="employee_profile__structural_unit",
             owner=Q(pk=self.request.user.pk),
@@ -118,9 +122,17 @@ class UserScopeMixin:
 
 
 class UserListView(UserScopeMixin, generics.ListAPIView):
-    pass
+    filter_backends = [DjangoFilterBackend, SearchFilter]
+    filterset_class = UserFilter
+    search_fields = ["email", "first_name", "last_name"]
 
 
+# Серіалізатор залежить від прав; у схемі показуємо адмінську версію запису
+# (власник змінює лише ім'я — зайві поля для нього read-only на бекенді)
+@extend_schema_view(
+    put=extend_schema(request=UserAdminSerializer, responses=UserAdminSerializer),
+    patch=extend_schema(request=UserAdminSerializer, responses=UserAdminSerializer),
+)
 class UserDetailView(UserScopeMixin, generics.RetrieveUpdateDestroyAPIView):
     lookup_field = "id"
     # Свій профіль можна читати і редагувати (лише ім'я), але не видаляти

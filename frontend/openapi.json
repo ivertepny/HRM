@@ -2318,6 +2318,14 @@
                 "description": "Користувачі видимі глобально (users:read) або в межах підрозділів\nscoped-ролі (через профіль працівника); себе видно завжди.",
                 "parameters": [
                     {
+                        "in": "query",
+                        "name": "has_employee",
+                        "schema": {
+                            "type": "boolean"
+                        },
+                        "description": "Має профіль працівника"
+                    },
+                    {
                         "name": "page",
                         "required": false,
                         "in": "query",
@@ -2334,6 +2342,27 @@
                         "schema": {
                             "type": "integer"
                         }
+                    },
+                    {
+                        "name": "search",
+                        "required": false,
+                        "in": "query",
+                        "description": "A search term.",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "in": "query",
+                        "name": "status",
+                        "schema": {
+                            "type": "string",
+                            "enum": [
+                                "active",
+                                "inactive"
+                            ]
+                        },
+                        "description": "* `active` - Активний\n* `inactive` - Вимкнений"
                     }
                 ],
                 "tags": [
@@ -2413,20 +2442,21 @@
                     "content": {
                         "application/json": {
                             "schema": {
-                                "$ref": "#/components/schemas/UserRequest"
+                                "$ref": "#/components/schemas/UserAdminRequest"
                             }
                         },
                         "application/x-www-form-urlencoded": {
                             "schema": {
-                                "$ref": "#/components/schemas/UserRequest"
+                                "$ref": "#/components/schemas/UserAdminRequest"
                             }
                         },
                         "multipart/form-data": {
                             "schema": {
-                                "$ref": "#/components/schemas/UserRequest"
+                                "$ref": "#/components/schemas/UserAdminRequest"
                             }
                         }
-                    }
+                    },
+                    "required": true
                 },
                 "security": [
                     {
@@ -2438,7 +2468,7 @@
                         "content": {
                             "application/json": {
                                 "schema": {
-                                    "$ref": "#/components/schemas/User"
+                                    "$ref": "#/components/schemas/UserAdmin"
                                 }
                             }
                         },
@@ -2466,17 +2496,17 @@
                     "content": {
                         "application/json": {
                             "schema": {
-                                "$ref": "#/components/schemas/PatchedUserRequest"
+                                "$ref": "#/components/schemas/PatchedUserAdminRequest"
                             }
                         },
                         "application/x-www-form-urlencoded": {
                             "schema": {
-                                "$ref": "#/components/schemas/PatchedUserRequest"
+                                "$ref": "#/components/schemas/PatchedUserAdminRequest"
                             }
                         },
                         "multipart/form-data": {
                             "schema": {
-                                "$ref": "#/components/schemas/PatchedUserRequest"
+                                "$ref": "#/components/schemas/PatchedUserAdminRequest"
                             }
                         }
                     }
@@ -2491,7 +2521,7 @@
                         "content": {
                             "application/json": {
                                 "schema": {
-                                    "$ref": "#/components/schemas/User"
+                                    "$ref": "#/components/schemas/UserAdmin"
                                 }
                             }
                         },
@@ -3977,6 +4007,31 @@
                     }
                 }
             },
+            "PatchedUserAdminRequest": {
+                "type": "object",
+                "description": "Для users:write — також email і статус.",
+                "properties": {
+                    "email": {
+                        "type": "string",
+                        "format": "email",
+                        "minLength": 1,
+                        "maxLength": 254
+                    },
+                    "first_name": {
+                        "type": "string",
+                        "nullable": true,
+                        "maxLength": 255
+                    },
+                    "last_name": {
+                        "type": "string",
+                        "nullable": true,
+                        "maxLength": 255
+                    },
+                    "status": {
+                        "$ref": "#/components/schemas/UserStatusEnum"
+                    }
+                }
+            },
             "PatchedUserRequest": {
                 "type": "object",
                 "description": "Профіль для самого користувача: змінювати можна лише ім'я.",
@@ -4128,6 +4183,11 @@
                     "is_system": {
                         "type": "boolean",
                         "readOnly": true
+                    },
+                    "users_count": {
+                        "type": "integer",
+                        "readOnly": true,
+                        "description": "Користувачі з активним призначенням цієї ролі"
                     },
                     "created_at": {
                         "type": "string",
@@ -4333,6 +4393,12 @@
                         ],
                         "readOnly": true
                     },
+                    "employee": {
+                        "type": "integer",
+                        "nullable": true,
+                        "readOnly": true,
+                        "description": "id профілю працівника або null, якщо його ще не оформлено"
+                    },
                     "is_email_confirmed": {
                         "type": "boolean",
                         "readOnly": true
@@ -4355,6 +4421,92 @@
                         "title": "Останній вхід"
                     }
                 }
+            },
+            "UserAdmin": {
+                "type": "object",
+                "description": "Для users:write — також email і статус.",
+                "properties": {
+                    "id": {
+                        "type": "integer",
+                        "readOnly": true
+                    },
+                    "email": {
+                        "type": "string",
+                        "format": "email",
+                        "maxLength": 254
+                    },
+                    "first_name": {
+                        "type": "string",
+                        "nullable": true,
+                        "maxLength": 255
+                    },
+                    "last_name": {
+                        "type": "string",
+                        "nullable": true,
+                        "maxLength": 255
+                    },
+                    "status": {
+                        "$ref": "#/components/schemas/UserStatusEnum"
+                    },
+                    "employee": {
+                        "type": "integer",
+                        "nullable": true,
+                        "readOnly": true,
+                        "description": "id профілю працівника або null, якщо його ще не оформлено"
+                    },
+                    "is_email_confirmed": {
+                        "type": "boolean",
+                        "readOnly": true
+                    },
+                    "created_at": {
+                        "type": "string",
+                        "format": "date-time",
+                        "readOnly": true
+                    },
+                    "updated_at": {
+                        "type": "string",
+                        "format": "date-time",
+                        "readOnly": true
+                    },
+                    "last_login": {
+                        "type": "string",
+                        "format": "date-time",
+                        "readOnly": true,
+                        "nullable": true,
+                        "title": "Останній вхід"
+                    }
+                },
+                "required": [
+                    "email"
+                ]
+            },
+            "UserAdminRequest": {
+                "type": "object",
+                "description": "Для users:write — також email і статус.",
+                "properties": {
+                    "email": {
+                        "type": "string",
+                        "format": "email",
+                        "minLength": 1,
+                        "maxLength": 254
+                    },
+                    "first_name": {
+                        "type": "string",
+                        "nullable": true,
+                        "maxLength": 255
+                    },
+                    "last_name": {
+                        "type": "string",
+                        "nullable": true,
+                        "maxLength": 255
+                    },
+                    "status": {
+                        "$ref": "#/components/schemas/UserStatusEnum"
+                    }
+                },
+                "required": [
+                    "email"
+                ]
             },
             "UserRequest": {
                 "type": "object",
@@ -4398,6 +4550,10 @@
                         "type": "integer",
                         "nullable": true,
                         "description": "Порожньо — роль діє глобально; інакше — у підрозділі та нащадках"
+                    },
+                    "structural_unit_name": {
+                        "type": "string",
+                        "readOnly": true
                     },
                     "granted_by": {
                         "type": "string",
@@ -4451,7 +4607,7 @@
                     "inactive"
                 ],
                 "type": "string",
-                "description": "* `active` - Active\n* `inactive` - Inactive"
+                "description": "* `active` - Активний\n* `inactive` - Вимкнений"
             },
             "VacationDecisionRequest": {
                 "type": "object",

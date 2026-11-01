@@ -9,6 +9,10 @@ from .models import User
 class UserSerializer(serializers.ModelSerializer):
     """Профіль для самого користувача: змінювати можна лише ім'я."""
 
+    employee = serializers.SerializerMethodField(
+        help_text="id профілю працівника або null, якщо його ще не оформлено"
+    )
+
     class Meta:
         model = User
         fields = [
@@ -17,6 +21,7 @@ class UserSerializer(serializers.ModelSerializer):
             "first_name",
             "last_name",
             "status",
+            "employee",
             "is_email_confirmed",
             "created_at",
             "updated_at",
@@ -30,6 +35,10 @@ class UserSerializer(serializers.ModelSerializer):
             "updated_at",
             "last_login",
         ]
+
+    def get_employee(self, obj) -> int | None:
+        profile = getattr(obj, "employee_profile", None)
+        return profile.id if profile else None
 
 
 class UserAdminSerializer(UserSerializer):
@@ -42,6 +51,19 @@ class UserAdminSerializer(UserSerializer):
             "updated_at",
             "last_login",
         ]
+
+    def validate_status(self, value):
+        request = self.context.get("request")
+        if (
+            request is not None
+            and self.instance is not None
+            and self.instance.pk == request.user.pk
+            and value != self.instance.status
+        ):
+            raise serializers.ValidationError(
+                "Не можна змінити статус власного акаунта."
+            )
+        return value
 
 
 class RegisterSerializer(serializers.ModelSerializer):

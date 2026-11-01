@@ -184,6 +184,9 @@ SPECTACULAR_SETTINGS = {
     "SCHEMA_COERCE_PATH_PK": True,
     "SCHEMA_PATH_PREFIX": r"/api/",
     "ENUM_NAME_OVERRIDES": {
+        # Поле status є в кількох моделях — даємо enum-ам стабільні назви
+        "UserStatusEnum": "apps.users.models.User.STATUS_CHOICES",
+        "VacationStatusEnum": "apps.vacations.models.VacationRequest.Status",
         "CustomTypeEnum": [
             ("OFFICE", "Центральний офіс"),
             ("DEPARTMENT", "Департамент"),
