@@ -3,6 +3,7 @@ from django.core.management import CommandError, call_command
 
 from apps.access.services import UserAccess
 from apps.employees.models import Employee
+from apps.equipment.models import Equipment, EquipmentAssignment
 from apps.users.models import User
 from apps.vacations.models import VacationRequest
 
@@ -17,6 +18,8 @@ def test_seed_demo_is_idempotent(settings):
     assert User.objects.filter(email__endswith="@example.com").count() == 5
     assert Employee.objects.count() == 4
     assert VacationRequest.objects.count() == 2
+    assert Equipment.objects.count() == 6
+    assert EquipmentAssignment.objects.filter(date_returned__isnull=True).count() == 3
 
 
 def test_seed_demo_users_can_log_in_with_given_password(settings, api_client):

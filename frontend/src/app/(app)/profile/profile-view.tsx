@@ -1,5 +1,6 @@
 "use client";
 
+import { EmployeeEquipment } from "@/components/app/employee-equipment";
 import { Section } from "@/components/app/section";
 import { Skeleton } from "@/components/ui/skeleton";
 import { fullName } from "@/components/app/user-name";
@@ -96,6 +97,12 @@ export function ProfileView() {
           <p className="mt-2 text-sm text-slate">
             Бачите лише ви та HR із доступом до зарплат.
           </p>
+        </Section>
+      )}
+
+      {job && (
+        <Section title="Обладнання">
+          <EmployeeEquipment employeeId={job.id!} emptyText="За вами не закріплено обладнання." />
         </Section>
       )}
 

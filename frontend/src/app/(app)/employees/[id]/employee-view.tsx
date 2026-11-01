@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useParams } from "next/navigation";
 
+import { EmployeeEquipment } from "@/components/app/employee-equipment";
 import { PageHeader, Section } from "@/components/app/section";
 import { fullName, initials } from "@/components/app/user-name";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -131,6 +132,17 @@ export function EmployeeView() {
           canDelete={can("documents:delete")}
         />
       </Section>
+
+      {(isMe || can("equipment:read")) && (
+        <Section title="Обладнання">
+          <EmployeeEquipment employeeId={employeeId} linkItems={can("equipment:read")} />
+          {data.date_fired && can("equipment:manage") && (
+            <p className="mt-3 text-sm text-slate">
+              Перед останнім робочим днем поверніть обладнання на склад.
+            </p>
+          )}
+        </Section>
+      )}
 
       {/* Звільнення вже призначене — повторно не оформлюємо */}
       {canEdit && !data.date_fired && (

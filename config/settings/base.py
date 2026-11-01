@@ -40,6 +40,7 @@ INSTALLED_APPS = [
     "apps.ai_assistant",
     "apps.access",
     "apps.vacations",
+    "apps.equipment",
 ]
 
 MIDDLEWARE = [
@@ -188,6 +189,8 @@ SPECTACULAR_SETTINGS = {
         # Поле status є в кількох моделях — даємо enum-ам стабільні назви
         "UserStatusEnum": "apps.users.models.User.STATUS_CHOICES",
         "VacationStatusEnum": "apps.vacations.models.VacationRequest.Status",
+        "EquipmentStateEnum": "apps.equipment.models.Equipment.State",
+        "EquipmentCategoryEnum": "apps.equipment.models.Equipment.Category",
         "CustomTypeEnum": [
             ("OFFICE", "Центральний офіс"),
             ("DEPARTMENT", "Департамент"),

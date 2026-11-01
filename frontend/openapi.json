@@ -2103,6 +2103,587 @@
                 }
             }
         },
+        "/api/equipment/assignments/": {
+            "get": {
+                "operationId": "equipment_assignments_list",
+                "description": "Свої — завжди; чужі — з equipment:read (у межах scope). ?active=true — те, що зараз на руках.",
+                "summary": "Журнал видач",
+                "parameters": [
+                    {
+                        "in": "query",
+                        "name": "active",
+                        "schema": {
+                            "type": "boolean"
+                        }
+                    },
+                    {
+                        "in": "query",
+                        "name": "employee",
+                        "schema": {
+                            "type": "integer"
+                        }
+                    },
+                    {
+                        "in": "query",
+                        "name": "equipment",
+                        "schema": {
+                            "type": "integer"
+                        }
+                    },
+                    {
+                        "name": "page",
+                        "required": false,
+                        "in": "query",
+                        "description": "A page number within the paginated result set.",
+                        "schema": {
+                            "type": "integer"
+                        }
+                    },
+                    {
+                        "name": "page_size",
+                        "required": false,
+                        "in": "query",
+                        "description": "Number of results to return per page.",
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "tags": [
+                    "Equipment"
+                ],
+                "security": [
+                    {
+                        "jwtAuth": []
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/PaginatedEquipmentAssignmentList"
+                                }
+                            }
+                        },
+                        "description": ""
+                    }
+                }
+            }
+        },
+        "/api/equipment/assignments/{id}/": {
+            "get": {
+                "operationId": "equipment_assignments_retrieve",
+                "parameters": [
+                    {
+                        "in": "path",
+                        "name": "id",
+                        "schema": {
+                            "type": "integer"
+                        },
+                        "description": "A unique integer value identifying this equipment assignment.",
+                        "required": true
+                    }
+                ],
+                "tags": [
+                    "Equipment"
+                ],
+                "security": [
+                    {
+                        "jwtAuth": []
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/EquipmentAssignment"
+                                }
+                            }
+                        },
+                        "description": ""
+                    }
+                }
+            }
+        },
+        "/api/equipment/items/": {
+            "get": {
+                "operationId": "equipment_items_list",
+                "description": "equipment:read — склад, списане і видане працівникам у межах scope; без дозволу — лише те, що видано вам.",
+                "summary": "Обладнання",
+                "parameters": [
+                    {
+                        "in": "query",
+                        "name": "category",
+                        "schema": {
+                            "type": "string",
+                            "enum": [
+                                "desktop",
+                                "laptop",
+                                "monitor",
+                                "other",
+                                "peripheral",
+                                "phone"
+                            ]
+                        },
+                        "description": "* `laptop` - Ноутбук\n* `desktop` - Комп'ютер\n* `monitor` - Монітор\n* `phone` - Телефон\n* `peripheral` - Периферія\n* `other` - Інше"
+                    },
+                    {
+                        "in": "query",
+                        "name": "holder",
+                        "schema": {
+                            "type": "integer"
+                        }
+                    },
+                    {
+                        "name": "page",
+                        "required": false,
+                        "in": "query",
+                        "description": "A page number within the paginated result set.",
+                        "schema": {
+                            "type": "integer"
+                        }
+                    },
+                    {
+                        "name": "page_size",
+                        "required": false,
+                        "in": "query",
+                        "description": "Number of results to return per page.",
+                        "schema": {
+                            "type": "integer"
+                        }
+                    },
+                    {
+                        "in": "query",
+                        "name": "search",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "in": "query",
+                        "name": "state",
+                        "schema": {
+                            "type": "string",
+                            "enum": [
+                                "assigned",
+                                "in_stock",
+                                "written_off"
+                            ]
+                        },
+                        "description": "* `in_stock` - На складі\n* `assigned` - Видано\n* `written_off` - Списано"
+                    }
+                ],
+                "tags": [
+                    "Equipment"
+                ],
+                "security": [
+                    {
+                        "jwtAuth": []
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/PaginatedEquipmentList"
+                                }
+                            }
+                        },
+                        "description": ""
+                    }
+                }
+            },
+            "post": {
+                "operationId": "equipment_items_create",
+                "summary": "Додати обладнання на склад",
+                "tags": [
+                    "Equipment"
+                ],
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/EquipmentRequest"
+                            }
+                        },
+                        "application/x-www-form-urlencoded": {
+                            "schema": {
+                                "$ref": "#/components/schemas/EquipmentRequest"
+                            }
+                        },
+                        "multipart/form-data": {
+                            "schema": {
+                                "$ref": "#/components/schemas/EquipmentRequest"
+                            }
+                        }
+                    },
+                    "required": true
+                },
+                "security": [
+                    {
+                        "jwtAuth": []
+                    }
+                ],
+                "responses": {
+                    "201": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Equipment"
+                                }
+                            }
+                        },
+                        "description": ""
+                    }
+                }
+            }
+        },
+        "/api/equipment/items/{id}/": {
+            "get": {
+                "operationId": "equipment_items_retrieve",
+                "parameters": [
+                    {
+                        "in": "path",
+                        "name": "id",
+                        "schema": {
+                            "type": "integer"
+                        },
+                        "description": "A unique integer value identifying this equipment.",
+                        "required": true
+                    }
+                ],
+                "tags": [
+                    "Equipment"
+                ],
+                "security": [
+                    {
+                        "jwtAuth": []
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Equipment"
+                                }
+                            }
+                        },
+                        "description": ""
+                    }
+                }
+            },
+            "put": {
+                "operationId": "equipment_items_update",
+                "parameters": [
+                    {
+                        "in": "path",
+                        "name": "id",
+                        "schema": {
+                            "type": "integer"
+                        },
+                        "description": "A unique integer value identifying this equipment.",
+                        "required": true
+                    }
+                ],
+                "tags": [
+                    "Equipment"
+                ],
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/EquipmentRequest"
+                            }
+                        },
+                        "application/x-www-form-urlencoded": {
+                            "schema": {
+                                "$ref": "#/components/schemas/EquipmentRequest"
+                            }
+                        },
+                        "multipart/form-data": {
+                            "schema": {
+                                "$ref": "#/components/schemas/EquipmentRequest"
+                            }
+                        }
+                    },
+                    "required": true
+                },
+                "security": [
+                    {
+                        "jwtAuth": []
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Equipment"
+                                }
+                            }
+                        },
+                        "description": ""
+                    }
+                }
+            },
+            "patch": {
+                "operationId": "equipment_items_partial_update",
+                "parameters": [
+                    {
+                        "in": "path",
+                        "name": "id",
+                        "schema": {
+                            "type": "integer"
+                        },
+                        "description": "A unique integer value identifying this equipment.",
+                        "required": true
+                    }
+                ],
+                "tags": [
+                    "Equipment"
+                ],
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/PatchedEquipmentRequest"
+                            }
+                        },
+                        "application/x-www-form-urlencoded": {
+                            "schema": {
+                                "$ref": "#/components/schemas/PatchedEquipmentRequest"
+                            }
+                        },
+                        "multipart/form-data": {
+                            "schema": {
+                                "$ref": "#/components/schemas/PatchedEquipmentRequest"
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "jwtAuth": []
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Equipment"
+                                }
+                            }
+                        },
+                        "description": ""
+                    }
+                }
+            },
+            "delete": {
+                "operationId": "equipment_items_destroy",
+                "description": "Лише без історії видач (помилково внесене); інакше — списання.",
+                "summary": "Видалити обладнання",
+                "parameters": [
+                    {
+                        "in": "path",
+                        "name": "id",
+                        "schema": {
+                            "type": "integer"
+                        },
+                        "description": "A unique integer value identifying this equipment.",
+                        "required": true
+                    }
+                ],
+                "tags": [
+                    "Equipment"
+                ],
+                "security": [
+                    {
+                        "jwtAuth": []
+                    }
+                ],
+                "responses": {
+                    "204": {
+                        "description": "No response body"
+                    }
+                }
+            }
+        },
+        "/api/equipment/items/{id}/assign/": {
+            "post": {
+                "operationId": "equipment_items_assign_create",
+                "description": "Потрібен equipment:manage і в підрозділі працівника.",
+                "summary": "Видати працівнику",
+                "parameters": [
+                    {
+                        "in": "path",
+                        "name": "id",
+                        "schema": {
+                            "type": "integer"
+                        },
+                        "description": "A unique integer value identifying this equipment.",
+                        "required": true
+                    }
+                ],
+                "tags": [
+                    "Equipment"
+                ],
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/AssignRequest"
+                            }
+                        },
+                        "application/x-www-form-urlencoded": {
+                            "schema": {
+                                "$ref": "#/components/schemas/AssignRequest"
+                            }
+                        },
+                        "multipart/form-data": {
+                            "schema": {
+                                "$ref": "#/components/schemas/AssignRequest"
+                            }
+                        }
+                    },
+                    "required": true
+                },
+                "security": [
+                    {
+                        "jwtAuth": []
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Equipment"
+                                }
+                            }
+                        },
+                        "description": ""
+                    }
+                }
+            }
+        },
+        "/api/equipment/items/{id}/return/": {
+            "post": {
+                "operationId": "equipment_items_return_create",
+                "summary": "Повернути на склад",
+                "parameters": [
+                    {
+                        "in": "path",
+                        "name": "id",
+                        "schema": {
+                            "type": "integer"
+                        },
+                        "description": "A unique integer value identifying this equipment.",
+                        "required": true
+                    }
+                ],
+                "tags": [
+                    "Equipment"
+                ],
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/ReturnRequest"
+                            }
+                        },
+                        "application/x-www-form-urlencoded": {
+                            "schema": {
+                                "$ref": "#/components/schemas/ReturnRequest"
+                            }
+                        },
+                        "multipart/form-data": {
+                            "schema": {
+                                "$ref": "#/components/schemas/ReturnRequest"
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "jwtAuth": []
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Equipment"
+                                }
+                            }
+                        },
+                        "description": ""
+                    }
+                }
+            }
+        },
+        "/api/equipment/items/{id}/write-off/": {
+            "post": {
+                "operationId": "equipment_items_write_off_create",
+                "description": "Лише обладнання на складі.",
+                "summary": "Списати",
+                "parameters": [
+                    {
+                        "in": "path",
+                        "name": "id",
+                        "schema": {
+                            "type": "integer"
+                        },
+                        "description": "A unique integer value identifying this equipment.",
+                        "required": true
+                    }
+                ],
+                "tags": [
+                    "Equipment"
+                ],
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/WriteOffRequest"
+                            }
+                        },
+                        "application/x-www-form-urlencoded": {
+                            "schema": {
+                                "$ref": "#/components/schemas/WriteOffRequest"
+                            }
+                        },
+                        "multipart/form-data": {
+                            "schema": {
+                                "$ref": "#/components/schemas/WriteOffRequest"
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "jwtAuth": []
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Equipment"
+                                }
+                            }
+                        },
+                        "description": ""
+                    }
+                }
+            }
+        },
         "/api/users/login/": {
             "post": {
                 "operationId": "users_login_create",
@@ -3035,6 +3616,48 @@
                     "type"
                 ]
             },
+            "AssignRequest": {
+                "type": "object",
+                "properties": {
+                    "employee_id": {
+                        "type": "integer"
+                    },
+                    "date": {
+                        "type": "string",
+                        "format": "date"
+                    },
+                    "note": {
+                        "type": "string",
+                        "maxLength": 500
+                    }
+                },
+                "required": [
+                    "employee_id"
+                ]
+            },
+            "AssignmentEquipment": {
+                "type": "object",
+                "properties": {
+                    "id": {
+                        "type": "integer"
+                    },
+                    "name": {
+                        "type": "string"
+                    },
+                    "category": {
+                        "$ref": "#/components/schemas/EquipmentCategoryEnum"
+                    },
+                    "serial_number": {
+                        "type": "string"
+                    }
+                },
+                "required": [
+                    "category",
+                    "id",
+                    "name",
+                    "serial_number"
+                ]
+            },
             "BlankEnum": {
                 "enum": [
                     ""
@@ -3407,6 +4030,199 @@
                     "user_id"
                 ]
             },
+            "Equipment": {
+                "type": "object",
+                "properties": {
+                    "id": {
+                        "type": "integer",
+                        "readOnly": true
+                    },
+                    "name": {
+                        "type": "string",
+                        "maxLength": 200
+                    },
+                    "category": {
+                        "$ref": "#/components/schemas/EquipmentCategoryEnum"
+                    },
+                    "serial_number": {
+                        "type": "string",
+                        "maxLength": 100
+                    },
+                    "description": {
+                        "type": "string"
+                    },
+                    "state": {
+                        "allOf": [
+                            {
+                                "$ref": "#/components/schemas/EquipmentStateEnum"
+                            }
+                        ],
+                        "readOnly": true
+                    },
+                    "holder": {
+                        "allOf": [
+                            {
+                                "$ref": "#/components/schemas/EquipmentEmployee"
+                            }
+                        ],
+                        "readOnly": true,
+                        "nullable": true
+                    },
+                    "held_since": {
+                        "type": "string",
+                        "format": "date",
+                        "readOnly": true,
+                        "nullable": true
+                    },
+                    "written_off_at": {
+                        "type": "string",
+                        "format": "date",
+                        "readOnly": true,
+                        "nullable": true
+                    },
+                    "created_at": {
+                        "type": "string",
+                        "format": "date-time",
+                        "readOnly": true
+                    }
+                },
+                "required": [
+                    "name",
+                    "serial_number"
+                ]
+            },
+            "EquipmentAssignment": {
+                "type": "object",
+                "properties": {
+                    "id": {
+                        "type": "integer",
+                        "readOnly": true
+                    },
+                    "equipment": {
+                        "allOf": [
+                            {
+                                "$ref": "#/components/schemas/AssignmentEquipment"
+                            }
+                        ],
+                        "readOnly": true
+                    },
+                    "employee": {
+                        "allOf": [
+                            {
+                                "$ref": "#/components/schemas/EquipmentEmployee"
+                            }
+                        ],
+                        "readOnly": true
+                    },
+                    "date_assigned": {
+                        "type": "string",
+                        "format": "date"
+                    },
+                    "date_returned": {
+                        "type": "string",
+                        "format": "date",
+                        "nullable": true
+                    },
+                    "is_active": {
+                        "type": "boolean",
+                        "readOnly": true
+                    },
+                    "note": {
+                        "type": "string",
+                        "maxLength": 500
+                    },
+                    "assigned_by": {
+                        "type": "string",
+                        "format": "email",
+                        "readOnly": true
+                    },
+                    "returned_by": {
+                        "type": "string",
+                        "format": "email",
+                        "readOnly": true
+                    }
+                },
+                "required": [
+                    "date_assigned"
+                ]
+            },
+            "EquipmentCategoryEnum": {
+                "enum": [
+                    "laptop",
+                    "desktop",
+                    "monitor",
+                    "phone",
+                    "peripheral",
+                    "other"
+                ],
+                "type": "string",
+                "description": "* `laptop` - Ноутбук\n* `desktop` - Комп'ютер\n* `monitor` - Монітор\n* `phone` - Телефон\n* `peripheral` - Периферія\n* `other` - Інше"
+            },
+            "EquipmentEmployee": {
+                "type": "object",
+                "properties": {
+                    "id": {
+                        "type": "integer"
+                    },
+                    "name": {
+                        "type": "string"
+                    }
+                },
+                "required": [
+                    "id",
+                    "name"
+                ]
+            },
+            "EquipmentEmployeeRequest": {
+                "type": "object",
+                "properties": {
+                    "id": {
+                        "type": "integer"
+                    },
+                    "name": {
+                        "type": "string",
+                        "minLength": 1
+                    }
+                },
+                "required": [
+                    "id",
+                    "name"
+                ]
+            },
+            "EquipmentRequest": {
+                "type": "object",
+                "properties": {
+                    "name": {
+                        "type": "string",
+                        "minLength": 1,
+                        "maxLength": 200
+                    },
+                    "category": {
+                        "$ref": "#/components/schemas/EquipmentCategoryEnum"
+                    },
+                    "serial_number": {
+                        "type": "string",
+                        "minLength": 1,
+                        "maxLength": 100
+                    },
+                    "description": {
+                        "type": "string"
+                    }
+                },
+                "required": [
+                    "name",
+                    "serial_number"
+                ]
+            },
+            "EquipmentStateEnum": {
+                "enum": [
+                    "in_stock",
+                    "assigned",
+                    "written_off"
+                ],
+                "type": "string",
+                "description": "* `in_stock` - На складі\n* `assigned` - Видано\n* `written_off` - Списано"
+            },
             "EventEnum": {
                 "enum": [
                     "hired",
@@ -3700,6 +4516,68 @@
                     }
                 }
             },
+            "PaginatedEquipmentAssignmentList": {
+                "type": "object",
+                "required": [
+                    "count",
+                    "results"
+                ],
+                "properties": {
+                    "count": {
+                        "type": "integer",
+                        "example": 123
+                    },
+                    "next": {
+                        "type": "string",
+                        "nullable": true,
+                        "format": "uri",
+                        "example": "http://api.example.org/accounts/?page=4"
+                    },
+                    "previous": {
+                        "type": "string",
+                        "nullable": true,
+                        "format": "uri",
+                        "example": "http://api.example.org/accounts/?page=2"
+                    },
+                    "results": {
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/components/schemas/EquipmentAssignment"
+                        }
+                    }
+                }
+            },
+            "PaginatedEquipmentList": {
+                "type": "object",
+                "required": [
+                    "count",
+                    "results"
+                ],
+                "properties": {
+                    "count": {
+                        "type": "integer",
+                        "example": 123
+                    },
+                    "next": {
+                        "type": "string",
+                        "nullable": true,
+                        "format": "uri",
+                        "example": "http://api.example.org/accounts/?page=4"
+                    },
+                    "previous": {
+                        "type": "string",
+                        "nullable": true,
+                        "format": "uri",
+                        "example": "http://api.example.org/accounts/?page=2"
+                    },
+                    "results": {
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/components/schemas/Equipment"
+                        }
+                    }
+                }
+            },
             "PaginatedPositionList": {
                 "type": "object",
                 "required": [
@@ -3962,6 +4840,27 @@
                     }
                 }
             },
+            "PatchedEquipmentRequest": {
+                "type": "object",
+                "properties": {
+                    "name": {
+                        "type": "string",
+                        "minLength": 1,
+                        "maxLength": 200
+                    },
+                    "category": {
+                        "$ref": "#/components/schemas/EquipmentCategoryEnum"
+                    },
+                    "serial_number": {
+                        "type": "string",
+                        "minLength": 1,
+                        "maxLength": 100
+                    },
+                    "description": {
+                        "type": "string"
+                    }
+                }
+            },
             "PatchedPositionRequest": {
                 "type": "object",
                 "properties": {
@@ -4165,6 +5064,19 @@
                     "email",
                     "password"
                 ]
+            },
+            "ReturnRequest": {
+                "type": "object",
+                "properties": {
+                    "date": {
+                        "type": "string",
+                        "format": "date"
+                    },
+                    "note": {
+                        "type": "string",
+                        "maxLength": 500
+                    }
+                }
             },
             "Role": {
                 "type": "object",
@@ -4763,6 +5675,15 @@
                 ],
                 "type": "string",
                 "description": "* `annual` - Щорічна відпустка\n* `sick` - Лікарняний\n* `unpaid` - За власний рахунок\n* `other` - Інше"
+            },
+            "WriteOffRequest": {
+                "type": "object",
+                "properties": {
+                    "date": {
+                        "type": "string",
+                        "format": "date"
+                    }
+                }
             }
         },
         "securitySchemes": {

@@ -56,13 +56,16 @@
 - [x] e2e — Playwright проти бекенду в docker-compose (`docker-compose.e2e.yml`, демо-дані `seed_demo`)
 - [x] Сервіс `frontend` у docker-compose (standalone-образ); CORS для dev уже налаштовано
 
-## ⏭ Крок 4 — Обладнання (`equipment`)
+## ✅ Крок 4 — Обладнання (`equipment`)
 
-- [ ] `Equipment`: `serial_number` (унікальний), `name`, `description`
-- [ ] `EquipmentAssignment`: `equipment`, `employee`, `date_assigned`, `date_returned`
-- [ ] Одна одиниця — не більше одного активного призначення; без призначення = «на складі»
+- [x] `Equipment`: `serial_number` (унікальний), `name`, `description` + `category`; стан — на складі / видано / списано
+- [x] `EquipmentAssignment`: `equipment`, `employee`, `date_assigned`, `date_returned` + хто видав / прийняв, примітка
+- [x] Одна одиниця — не більше одного активного призначення (частковий унікальний індекс у БД); без призначення = «на складі»
+- [x] Операції видати / повернути / списати; обладнання з історією не видаляється, лише списується
+- [x] Доступ: `equipment:read` / `equipment:manage` зі scope за підрозділом власника; своє обладнання видно завжди
+- [x] Фронтенд: `/equipment` (облік, фільтри), картка з діями й історією, блок «Обладнання» в профілі та картці працівника; e2e-сценарій
 
-## Крок 5 — Тайм-трекінг (`attendance`)
+## ⏭ Крок 5 — Тайм-трекінг (`attendance`)
 
 - [ ] `AttendanceRecord`: `employee`, `date`, `time_start`, `time_end`, `status` (`remote` / `office` / `off`)
 - [ ] Відмітка присутності за себе; місячний звіт для HR (з урахуванням scope)
@@ -100,6 +103,7 @@
 - [x] Зарплата без валюти
 - [x] `psycopg2-binary` → `psycopg[binary]`
 - [x] N+1 запитів предків підрозділу у списках (знайдено під час ревізії)
+- [x] `.gitignore`: правило `lib/` з Python-шаблону ховало `frontend/src/lib/` — тепер `/lib/`
 
 ---
 

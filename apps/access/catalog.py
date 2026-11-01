@@ -70,6 +70,7 @@ SYSTEM_ROLES = {
             "vacations:read",
             "vacations:write",
             "vacations:manage",
+            "equipment:read",
             "equipment:manage",
             "attendance:read",
             "ai:use",

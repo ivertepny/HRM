@@ -12,6 +12,7 @@ from apps.access.models import Role, UserRole
 from apps.access.services import grant_default_role
 from apps.company.models import StructuralUnit
 from apps.employees.models import Employee, Position
+from apps.equipment.models import Equipment
 from apps.users.models import User
 from apps.vacations.models import VacationRequest
 
@@ -123,6 +124,7 @@ class Command(BaseCommand):
                 )
 
         self._vacations(employees)
+        self._equipment(employees)
         self.stdout.write(
             self.style.SUCCESS(
                 f"Демо-дані готові. Користувачі: {', '.join(p[0] for p in PEOPLE)}; "
@@ -167,3 +169,31 @@ class Command(BaseCommand):
                 "status": VacationRequest.Status.APPROVED,
             },
         )
+
+    def _equipment(self, employees):
+        """Ноутбуки в розробників, монітор і ноутбук на складі, списаний телефон."""
+        laptop = Equipment.Category.LAPTOP
+        items = [
+            ("Lenovo ThinkPad T14", laptop, "DEMO-LT-001", "olena@example.com"),
+            ("Apple MacBook Pro 14", laptop, "DEMO-LT-002", "petro@example.com"),
+            ("Dell Latitude 5440", laptop, "DEMO-LT-003", "maria@example.com"),
+            ("Dell Latitude 5440", laptop, "DEMO-LT-004", None),
+            ('Dell P2723DE 27"', Equipment.Category.MONITOR, "DEMO-MN-001", None),
+        ]
+        hired = datetime.date(2024, 3, 1)
+        for name, category, serial, holder in items:
+            item, created = Equipment.objects.get_or_create(
+                serial_number=serial, defaults={"name": name, "category": category}
+            )
+            if created and holder:
+                item.assign(employees[holder], hired)
+
+        phone, created = Equipment.objects.get_or_create(
+            serial_number="DEMO-PH-001",
+            defaults={
+                "name": "Samsung Galaxy A54",
+                "category": Equipment.Category.PHONE,
+            },
+        )
+        if created:
+            phone.write_off(datetime.date(2025, 6, 1))
