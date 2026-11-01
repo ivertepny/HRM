@@ -1,3 +1,5 @@
+from django.db.models import Q
+from django.utils import timezone
 from drf_spectacular.utils import extend_schema_field, inline_serializer
 from rest_framework import serializers
 
@@ -95,7 +97,18 @@ class StructuralUnitSerializer(ModelCleanMixin, serializers.ModelSerializer):
         help_text="Виберіть ID батьківського підрозділу (дитину, якщо додаєте онука)",
     )
     children_count = serializers.SerializerMethodField()
+    employees_count = serializers.SerializerMethodField()
     ancestors = serializers.SerializerMethodField()
+
+    @extend_schema_field(serializers.IntegerField())
+    def get_employees_count(self, obj) -> int:
+        """Працівники безпосередньо в підрозділі (без дочірніх), без звільнених."""
+        annotated = getattr(obj, "employees_count", None)
+        if annotated is not None:
+            return annotated
+        return obj.employees_su.filter(
+            Q(date_fired__isnull=True) | Q(date_fired__gt=timezone.localdate())
+        ).count()
 
     @extend_schema_field(serializers.IntegerField())
     def get_children_count(self, obj) -> int:

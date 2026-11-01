@@ -1,14 +1,21 @@
 import django_filters
 from django.db.models import Q
 from django.utils import timezone
+from drf_spectacular.types import OpenApiTypes
+from drf_spectacular.utils import extend_schema_field
 
 from apps.company.models import StructuralUnit
 
 from .models import Employee
 
 
+@extend_schema_field(OpenApiTypes.INT)
+class UnitFilter(django_filters.ModelChoiceFilter):
+    """id підрозділу (у схемі — integer, а не рядок)."""
+
+
 class EmployeeFilter(django_filters.FilterSet):
-    unit = django_filters.ModelChoiceFilter(
+    unit = UnitFilter(
         queryset=StructuralUnit.objects.all(),
         method="filter_unit",
         label="Підрозділ разом з дочірніми",

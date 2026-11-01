@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { useSearchParams } from "next/navigation";
 import { useEffect, useState } from "react";
 
 import { NativeSelect } from "@/components/app/native-select";
@@ -13,7 +14,7 @@ import { Label } from "@/components/ui/label";
 import { Skeleton } from "@/components/ui/skeleton";
 import { canAnywhere } from "@/lib/access";
 import { fileHref, unitPath } from "@/lib/employees";
-import { formatDate, LEVEL_LABELS } from "@/lib/format";
+import { formatDate, LEVEL_LABELS, PEOPLE, plural } from "@/lib/format";
 import { useEmployees, useMyAccess, useUnits } from "@/lib/queries";
 
 const PAGE_SIZE = 20;
@@ -33,7 +34,9 @@ export function EmployeeDirectory() {
   const access = useMyAccess();
   const units = useUnits(canAnywhere(access.data, "company:read"));
   const [search, setSearch] = useState("");
-  const [unit, setUnit] = useState("");
+  // ?unit= — перехід з оргструктури («Переглянути працівників»)
+  const params = useSearchParams();
+  const [unit, setUnit] = useState(params.get("unit") ?? "");
   const [level, setLevel] = useState<Level | "">("");
   const [showFired, setShowFired] = useState(false);
   const [page, setPage] = useState(1);
@@ -43,7 +46,7 @@ export function EmployeeDirectory() {
     page,
     page_size: PAGE_SIZE,
     search: term || undefined,
-    unit: unit || undefined,
+    unit: unit ? Number(unit) : undefined,
     level: level || undefined,
     active: showFired ? undefined : true,
   });
@@ -63,7 +66,8 @@ export function EmployeeDirectory() {
   return (
     <div className="grid gap-8">
       <PageHeader title="Працівники">
-        {employees.isSuccess && (count ? `${count} у вашій області доступу.` : null)}
+        {employees.isSuccess &&
+          (count ? `${count} ${plural(count, PEOPLE)} у вашій області доступу.` : null)}
       </PageHeader>
 
       <div className="grid gap-4 border-t border-border pt-6 md:grid-cols-[minmax(0,2fr)_minmax(0,2fr)_minmax(0,1fr)] md:items-end">

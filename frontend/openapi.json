@@ -1141,24 +1141,6 @@
                             "type": "integer"
                         },
                         "description": "Кількість останніх записів"
-                    },
-                    {
-                        "name": "page",
-                        "required": false,
-                        "in": "query",
-                        "description": "A page number within the paginated result set.",
-                        "schema": {
-                            "type": "integer"
-                        }
-                    },
-                    {
-                        "name": "page_size",
-                        "required": false,
-                        "in": "query",
-                        "description": "Number of results to return per page.",
-                        "schema": {
-                            "type": "integer"
-                        }
                     }
                 ],
                 "tags": [
@@ -1174,7 +1156,10 @@
                         "content": {
                             "application/json": {
                                 "schema": {
-                                    "$ref": "#/components/schemas/PaginatedHistoryList"
+                                    "type": "array",
+                                    "items": {
+                                        "$ref": "#/components/schemas/History"
+                                    }
                                 }
                             }
                         },
@@ -1212,6 +1197,36 @@
                             "application/json": {
                                 "schema": {
                                     "$ref": "#/components/schemas/StructuralUnit"
+                                }
+                            }
+                        },
+                        "description": ""
+                    }
+                }
+            }
+        },
+        "/api/company/units/tree/": {
+            "get": {
+                "operationId": "company_units_tree_list",
+                "description": "Без пагінації, у порядку обходу дерева (tree_id, lft); у межах прав company:read. Для побудови дерева на клієнті.",
+                "summary": "Усе дерево підрозділів одним списком",
+                "tags": [
+                    "company"
+                ],
+                "security": [
+                    {
+                        "jwtAuth": []
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "array",
+                                    "items": {
+                                        "$ref": "#/components/schemas/StructuralUnit"
+                                    }
                                 }
                             }
                         },
@@ -1581,9 +1596,8 @@
                         "in": "query",
                         "name": "unit",
                         "schema": {
-                            "type": "string"
-                        },
-                        "description": "Підрозділ разом з дочірніми"
+                            "type": "integer"
+                        }
                     },
                     {
                         "in": "query",
@@ -3409,7 +3423,7 @@
                     "-"
                 ],
                 "type": "string",
-                "description": "* `+` - Created\n* `~` - Changed\n* `-` - Deleted"
+                "description": "* `+` - Створено\n* `~` - Змінено\n* `-` - Видалено"
             },
             "LevelEnum": {
                 "enum": [
@@ -3645,37 +3659,6 @@
                         "type": "array",
                         "items": {
                             "$ref": "#/components/schemas/Employee"
-                        }
-                    }
-                }
-            },
-            "PaginatedHistoryList": {
-                "type": "object",
-                "required": [
-                    "count",
-                    "results"
-                ],
-                "properties": {
-                    "count": {
-                        "type": "integer",
-                        "example": 123
-                    },
-                    "next": {
-                        "type": "string",
-                        "nullable": true,
-                        "format": "uri",
-                        "example": "http://api.example.org/accounts/?page=4"
-                    },
-                    "previous": {
-                        "type": "string",
-                        "nullable": true,
-                        "format": "uri",
-                        "example": "http://api.example.org/accounts/?page=2"
-                    },
-                    "results": {
-                        "type": "array",
-                        "items": {
-                            "$ref": "#/components/schemas/History"
                         }
                     }
                 }
@@ -4208,6 +4191,10 @@
                         "type": "integer",
                         "readOnly": true
                     },
+                    "employees_count": {
+                        "type": "integer",
+                        "readOnly": true
+                    },
                     "ancestors": {
                         "type": "array",
                         "items": {
@@ -4364,7 +4351,8 @@
                         "type": "string",
                         "format": "date-time",
                         "readOnly": true,
-                        "nullable": true
+                        "nullable": true,
+                        "title": "Останній вхід"
                     }
                 }
             },
