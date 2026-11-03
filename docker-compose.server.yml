@@ -112,7 +112,7 @@ services:
     logging: *logging
 
   nginx:
-    image: nginx:1.29-alpine
+    image: nginx:1.31-alpine
     container_name: hrm-nginx
     restart: always
     depends_on:
