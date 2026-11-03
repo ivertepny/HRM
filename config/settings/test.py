@@ -6,6 +6,7 @@ import os
 os.environ.setdefault("SECRET_KEY", "test-secret-key-not-for-production")
 # Ліміти запитів не заважають тестам; перевіряє їх фікстура throttle_rates
 os.environ.setdefault("LOGIN_RATE", "10000/min")
+os.environ.setdefault("PASSWORD_RESET_RATE", "10000/min")
 os.environ.setdefault("AI_CHAT_RATE", "10000/min")
 os.environ.setdefault("AI_CHAT_DAILY_RATE", "10000/day")
 

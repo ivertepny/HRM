@@ -668,6 +668,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/users/invite/accept/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Прийняти запрошення: задати пароль
+         * @description Новий пароль за посиланням з листа; generator — вид токена.
+         */
+        post: operations["users_invite_accept_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/users/login/": {
         parameters: {
             query?: never;
@@ -736,6 +756,46 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/users/password-reset/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Запит на скидання пароля
+         * @description Завжди 204, незалежно від того, чи є такий обліковий запис (щоб не можна було перевіряти пошти). Лист отримують лише активні записи.
+         */
+        post: operations["users_password_reset_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/users/password-reset/confirm/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Задати новий пароль за посиланням зі скидання
+         * @description Новий пароль за посиланням з листа; generator — вид токена.
+         */
+        post: operations["users_password_reset_confirm_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/users/profile/": {
         parameters: {
             query?: never;
@@ -788,6 +848,26 @@ export interface paths {
         patch: operations["users_profile_partial_update"];
         trace?: never;
     };
+    "/api/users/profile/{id}/invite/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Надіслати запрошення ще раз
+         * @description Лише поки людина не задала пароль; інакше — скидання пароля.
+         */
+        post: operations["users_profile_invite_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/users/register/": {
         parameters: {
             query?: never;
@@ -797,7 +877,10 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /** @description Створення облікового запису (HR / адмін). Публічної реєстрації немає. */
+        /**
+         * Створити обліковий запис і надіслати запрошення
+         * @description Пароль задає сама людина за посиланням з листа. invite_sent=false — лист не пішов; запис створено, запрошення можна надіслати ще раз.
+         */
         post: operations["users_register_create"];
         delete?: never;
         options?: never;
@@ -1449,6 +1532,10 @@ export interface components {
             previous?: string | null;
             results: components["schemas"]["VacationRequest"][];
         };
+        PasswordResetRequestRequest: {
+            /** Format: email */
+            email: string;
+        };
         /** @description Відмітка за день. Подається лише за себе; дата за замовчуванням — сьогодні. */
         PatchedAttendanceRecordRequest: {
             /** Format: date */
@@ -1535,19 +1622,22 @@ export interface components {
         PositionRequest: {
             name: string;
         };
+        /** @description Новий обліковий запис без пароля: людина задає його сама за запрошенням. */
         Register: {
             readonly id?: number;
             /** Format: email */
             email: string;
             first_name?: string | null;
             last_name?: string | null;
+            /** @description false — лист не пішов (див. логи), надішліть запрошення ще раз */
+            readonly invite_sent?: boolean;
         };
+        /** @description Новий обліковий запис без пароля: людина задає його сама за запрошенням. */
         RegisterRequest: {
             /** Format: email */
             email: string;
             first_name?: string | null;
             last_name?: string | null;
-            password: string;
         };
         Report: {
             month: string;
@@ -1595,6 +1685,12 @@ export interface components {
          * @enum {string}
          */
         SalaryCurrencyEnum: "UAH" | "USD" | "EUR";
+        /** @description Новий пароль за посиланням з листа (запрошення або скидання). */
+        SetPasswordRequest: {
+            uid: string;
+            token: string;
+            password: string;
+        };
         /** @description Підрозділ оргструктури (MPTT-дерево). */
         StructuralUnit: {
             readonly id?: number;
@@ -1672,6 +1768,8 @@ export interface components {
              * Format: date-time
              */
             readonly last_login?: string | null;
+            /** @description Пароль ще не задано — запрошення не прийнято */
+            readonly invite_pending?: boolean;
         };
         /** @description Для users:write — також email і статус. */
         UserAdminRequest: {
@@ -3416,6 +3514,30 @@ export interface operations {
             };
         };
     };
+    users_invite_accept_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SetPasswordRequest"];
+                "application/x-www-form-urlencoded": components["schemas"]["SetPasswordRequest"];
+                "multipart/form-data": components["schemas"]["SetPasswordRequest"];
+            };
+        };
+        responses: {
+            /** @description No response body */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
     users_login_create: {
         parameters: {
             query?: never;
@@ -3548,6 +3670,54 @@ export interface operations {
             };
         };
     };
+    users_password_reset_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PasswordResetRequestRequest"];
+                "application/x-www-form-urlencoded": components["schemas"]["PasswordResetRequestRequest"];
+                "multipart/form-data": components["schemas"]["PasswordResetRequestRequest"];
+            };
+        };
+        responses: {
+            /** @description No response body */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    users_password_reset_confirm_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SetPasswordRequest"];
+                "application/x-www-form-urlencoded": components["schemas"]["SetPasswordRequest"];
+                "multipart/form-data": components["schemas"]["SetPasswordRequest"];
+            };
+        };
+        responses: {
+            /** @description No response body */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
     users_profile_list: {
         parameters: {
             query?: {
@@ -3597,7 +3767,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["User"];
+                    "application/json": components["schemas"]["UserAdmin"];
                 };
             };
         };
@@ -3673,6 +3843,26 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["UserAdmin"];
                 };
+            };
+        };
+    };
+    users_profile_invite_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description No response body */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
         };
     };

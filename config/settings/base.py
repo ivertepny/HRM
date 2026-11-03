@@ -159,6 +159,30 @@ CACHES = {
 # Скільки секунд тримати в кеші обчислені права користувача
 ACCESS_CACHE_TIMEOUT = 300
 
+# Пошта. У dev листи друкуються в консоль; у prod — SMTP (prod.py).
+# Підійде будь-який SMTP-провайдер: Brevo, Mailgun, Postmark, Resend тощо.
+EMAIL_BACKEND = env(
+    "EMAIL_BACKEND", default="django.core.mail.backends.console.EmailBackend"
+)
+EMAIL_HOST = env("EMAIL_HOST", default="localhost")
+EMAIL_PORT = env.int("EMAIL_PORT", default=587)
+EMAIL_HOST_USER = env("EMAIL_HOST_USER", default="")
+EMAIL_HOST_PASSWORD = env("EMAIL_HOST_PASSWORD", default="")
+EMAIL_USE_TLS = env.bool("EMAIL_USE_TLS", default=True)
+EMAIL_TIMEOUT = 10  # секунд: недоступний SMTP не вішає запит
+DEFAULT_FROM_EMAIL = env("DEFAULT_FROM_EMAIL", default="HRM <noreply@localhost>")
+# Для filebased-бекенду (e2e-стенд читає з файлів посилання з листів)
+EMAIL_FILE_PATH = env("EMAIL_FILE_PATH", default=None)
+
+# Адреса веб-клієнта — для посилань у листах (без "/" в кінці)
+FRONTEND_URL = env("FRONTEND_URL", default="http://localhost:3000").rstrip("/")
+
+# Скільки діють посилання з листів (apps/users/tokens.py)
+PASSWORD_RESET_TOKEN_SECONDS = 2 * 3600
+INVITE_TOKEN_SECONDS = env.int("INVITE_DAYS", default=7) * 86400
+# Глобальний ліміт Django — найдовший з термінів; коротші перевіряє tokens.py
+PASSWORD_RESET_TIMEOUT = max(PASSWORD_RESET_TOKEN_SECONDS, INVITE_TOKEN_SECONDS)
+
 # Скільки днів назад працівник може виправляти свій табель
 ATTENDANCE_EDIT_DAYS = env.int("ATTENDANCE_EDIT_DAYS", default=7)
 
@@ -181,6 +205,8 @@ REST_FRAMEWORK = {
         "user": "600/min",  # з запасом для пошуку під час набору і дашбордів
         # На один email; вдалі спроби теж рахуються
         "login": env("LOGIN_RATE", default="10/hour"),
+        # Листів зі скиданням пароля на одну адресу
+        "password_reset": env("PASSWORD_RESET_RATE", default="5/hour"),
         "ai_chat": env("AI_CHAT_RATE", default="10/min"),
         "ai_chat_daily": env("AI_CHAT_DAILY_RATE", default="200/day"),
     },

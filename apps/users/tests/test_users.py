@@ -15,12 +15,9 @@ NEW_USER = {
 }
 
 
-def register(client, password, **overrides):
-    return client.post(
-        "/api/users/register/",
-        {**NEW_USER, "password": password, **overrides},
-        format="json",
-    )
+def register(client, password=None, **overrides):
+    """Пароль більше не передається — людина задає його за запрошенням."""
+    return client.post("/api/users/register/", {**NEW_USER, **overrides}, format="json")
 
 
 # --- створення облікових записів -------------------------------------------
@@ -41,19 +38,11 @@ def test_hr_creates_account_with_default_role(client_as, user, grant, password):
 
     assert response.status_code == 201
     created = User.objects.get(email="new@example.com")
-    assert created.check_password(password)
+    assert not created.has_usable_password()
     assert "password" not in response.json()
     assignment = UserRole.objects.get(user=created)
     assert assignment.role.name == "Employee"
     assert assignment.granted_by == user
-
-
-@pytest.mark.parametrize("weak", ["123", "password", "new@example.com"])
-def test_weak_password_is_rejected(auth_client, weak):
-    response = register(auth_client, weak)
-
-    assert response.status_code == 400
-    assert "password" in response.json()
 
 
 def test_duplicate_email_is_rejected(auth_client, user, password):

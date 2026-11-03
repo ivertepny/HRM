@@ -68,6 +68,17 @@ nano .env
 
 AWS-ключів у `.env` бути не повинно: `prod.py` з ними не стартує.
 
+**Пошта** потрібна для запрошень і скидання пароля. Без `EMAIL_HOST`,
+`DEFAULT_FROM_EMAIL` і `FRONTEND_URL` контейнер `api` не стартує.
+
+- **Провайдер:** підійде будь-який SMTP — Brevo, Mailgun, Postmark, Resend,
+  Zoho. Hetzner блокує вихідні порти 25 і 465 на нових серверах, тому
+  використовуйте порт 587 з TLS (`EMAIL_PORT=587`, `EMAIL_USE_TLS=true`).
+- **DNS домену відправника:** додайте записи SPF і DKIM з кабінету провайдера,
+  а бажано й DMARC. Без них листи потраплятимуть у «Спам».
+- **Перевірка:**
+  `docker compose -f docker-compose.server.yml exec api python manage.py sendtestemail you@example.com`.
+
 ### 3. Перший запуск
 
 ```bash
@@ -159,10 +170,12 @@ command="bash /www/hrm/deploy.sh",no-port-forwarding,no-X11-forwarding,no-agent-
   ні email чи IP (`apps/core/sentry.py`). Лише тип помилки, стек, URL і метод.
 - **Ліміти:**
   - nginx стеку: 10 запитів/с з одного IP, вхід — 10/хв з IP;
-  - Django: 10 спроб входу на годину на один email, 600 запитів/хв на
-    користувача, AI-асистент — 10/хв і 200/день на користувача;
-  - змінюються через `LOGIN_RATE`, `AI_CHAT_RATE`, `AI_CHAT_DAILY_RATE` у
-    `.env`.
+  - nginx: скидання пароля і пароль за посиланням — так само, як вхід;
+  - Django: 10 спроб входу на годину на один email, 5 листів зі скиданням на
+    годину на одну адресу, 600 запитів/хв на користувача, AI-асистент — 10/хв
+    і 200/день на користувача;
+  - змінюються через `LOGIN_RATE`, `PASSWORD_RESET_RATE`, `AI_CHAT_RATE`,
+    `AI_CHAT_DAILY_RATE` у `.env`.
 - **HSTS:** коли HTTPS кілька днів працює без проблем, підніміть `max-age` до
   `31536000` у `nginx/nginx.conf` (через коміт) і `SECURE_HSTS_SECONDS` у
   `.env`.

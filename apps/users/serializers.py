@@ -4,6 +4,7 @@ from django.core.exceptions import ValidationError as DjangoValidationError
 from rest_framework import serializers
 
 from .models import User
+from .tokens import user_for_token
 
 
 class UserSerializer(serializers.ModelSerializer):
@@ -44,13 +45,21 @@ class UserSerializer(serializers.ModelSerializer):
 class UserAdminSerializer(UserSerializer):
     """Для users:write — також email і статус."""
 
+    invite_pending = serializers.SerializerMethodField(
+        help_text="Пароль ще не задано — запрошення не прийнято"
+    )
+
     class Meta(UserSerializer.Meta):
+        fields = [*UserSerializer.Meta.fields, "invite_pending"]
         read_only_fields = [
             "is_email_confirmed",
             "created_at",
             "updated_at",
             "last_login",
         ]
+
+    def get_invite_pending(self, obj) -> bool:
+        return not obj.has_usable_password()
 
     def validate_status(self, value):
         request = self.context.get("request")
@@ -67,23 +76,48 @@ class UserAdminSerializer(UserSerializer):
 
 
 class RegisterSerializer(serializers.ModelSerializer):
-    password = serializers.CharField(write_only=True, style={"input_type": "password"})
+    """Новий обліковий запис без пароля: людина задає його сама за запрошенням."""
+
+    invite_sent = serializers.SerializerMethodField(
+        help_text="false — лист не пішов (див. логи), надішліть запрошення ще раз"
+    )
 
     class Meta:
         model = User
-        fields = ["id", "email", "first_name", "last_name", "password"]
+        fields = ["id", "email", "first_name", "last_name", "invite_sent"]
 
-    def validate(self, attrs):
-        # Валідатори з AUTH_PASSWORD_VALIDATORS (довжина, схожість з email тощо)
-        candidate = User(**{k: v for k, v in attrs.items() if k != "password"})
-        try:
-            validate_password(attrs["password"], user=candidate)
-        except DjangoValidationError as exc:
-            raise serializers.ValidationError({"password": exc.messages}) from exc
-        return attrs
+    def get_invite_sent(self, obj) -> bool:
+        return getattr(obj, "invite_sent", False)
 
     def create(self, validated_data):
-        return User.objects.create_user(**validated_data)
+        # password=None — непридатний пароль: увійти неможливо до запрошення
+        return User.objects.create_user(password=None, **validated_data)
+
+
+class PasswordResetRequestSerializer(serializers.Serializer):
+    email = serializers.EmailField()
+
+
+class SetPasswordSerializer(serializers.Serializer):
+    """Новий пароль за посиланням з листа (запрошення або скидання)."""
+
+    uid = serializers.CharField()
+    token = serializers.CharField()
+    password = serializers.CharField(write_only=True, style={"input_type": "password"})
+
+    INVALID_LINK = "Посилання недійсне або застаріло. Попросіть нове."
+
+    def validate(self, attrs):
+        user = user_for_token(attrs["uid"], attrs["token"], self.context["generator"])
+        if user is None:
+            raise serializers.ValidationError({"token": self.INVALID_LINK})
+        # Валідатори з AUTH_PASSWORD_VALIDATORS (довжина, схожість з email тощо)
+        try:
+            validate_password(attrs["password"], user=user)
+        except DjangoValidationError as exc:
+            raise serializers.ValidationError({"password": exc.messages}) from exc
+        attrs["user"] = user
+        return attrs
 
 
 class LoginSerializer(serializers.Serializer):

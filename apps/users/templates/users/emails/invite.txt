@@ -1,0 +1,11 @@
+{% autoescape off %}Вітаємо{% if user.first_name %}, {{ user.first_name }}{% endif %}!
+
+{% if invited_by %}{% if invited_by.first_name %}{{ invited_by.first_name }} {{ invited_by.last_name|default:'' }}{% else %}{{ invited_by.email }}{% endif %} створив(-ла) для вас{% else %}Для вас створено{% endif %} обліковий запис у HR-системі компанії.
+
+Щоб почати, задайте пароль за посиланням:
+{{ link }}
+
+Посилання діє {{ days }} дн. і лише один раз. Логін — ця адреса: {{ user.email }}
+
+Якщо лист прийшов вам помилково, просто проігноруйте його.
+{% endautoescape %}

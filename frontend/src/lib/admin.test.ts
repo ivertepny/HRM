@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { catalogRows, cellState, generatePassword, toggle } from "./admin";
+import { catalogRows, cellState, toggle } from "./admin";
 
 const catalog = [
   { codename: "*:*", resource: "*", action: "*", description: "" },
@@ -31,14 +31,5 @@ describe("permission matrix", () => {
   it("toggles permissions keeping the list sorted", () => {
     expect(toggle(["users:read"], "ai:use")).toEqual(["ai:use", "users:read"]);
     expect(toggle(["ai:use", "users:read"], "ai:use")).toEqual(["users:read"]);
-  });
-});
-
-describe("generatePassword", () => {
-  it("creates long random passwords without look-alike characters", () => {
-    const password = generatePassword();
-    expect(password).toHaveLength(16);
-    expect(password).not.toMatch(/[0O1lI]/);
-    expect(generatePassword()).not.toBe(password);
   });
 });

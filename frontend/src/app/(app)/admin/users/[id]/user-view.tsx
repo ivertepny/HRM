@@ -15,6 +15,7 @@ import { useMe, useMyAccess } from "@/lib/queries";
 
 import { AccountSection } from "./account-section";
 import { HireForm } from "./hire-form";
+import { InviteNotice } from "./invite-notice";
 import { RolesSection } from "./roles-section";
 
 export function UserView() {
@@ -55,6 +56,10 @@ export function UserView() {
           {data.last_login ? `, востаннє входив(-ла) ${formatDate(data.last_login)}` : ", ще не входив(-ла)"}
         </span>
       </PageHeader>
+
+      {data.invite_pending && (
+        <InviteNotice userId={data.id!} email={data.email!} canResend={can("users:write")} />
+      )}
 
       <Section title="Обліковий запис">
         <AccountSection

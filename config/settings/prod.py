@@ -35,6 +35,15 @@ SILENCED_SYSTEM_CHECKS = [
     "security.W021",
 ]
 
+# Пошта — лише SMTP; без цих змінних запрошення і скидання не працюватимуть,
+# тож падаємо при старті, а не на першому листі
+EMAIL_BACKEND = "django.core.mail.backends.smtp.EmailBackend"
+EMAIL_HOST = env("EMAIL_HOST")
+DEFAULT_FROM_EMAIL = env("DEFAULT_FROM_EMAIL")
+FRONTEND_URL = env("FRONTEND_URL").rstrip("/")
+if not FRONTEND_URL.startswith("https://"):
+    raise ImproperlyConfigured("FRONTEND_URL у prod має починатися з https://")
+
 # Постійні з'єднання з БД: без нового TCP + автентифікації на кожен запит.
 # Health check перевіряє з'єднання перед повторним використанням.
 DATABASES["default"]["CONN_MAX_AGE"] = env.int("CONN_MAX_AGE", default=60)

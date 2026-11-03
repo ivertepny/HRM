@@ -60,10 +60,3 @@ export function toggle(granted: string[], codename: string): string[] {
     ? granted.filter((c) => c !== codename)
     : [...granted, codename].sort();
 }
-
-/** Пароль для нового акаунта: 16 символів без схожих (0/O, 1/l). */
-export function generatePassword(length = 16) {
-  const alphabet = "ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnpqrstuvwxyz23456789-_";
-  const bytes = crypto.getRandomValues(new Uint32Array(length));
-  return Array.from(bytes, (b) => alphabet[b % alphabet.length]).join("");
-}

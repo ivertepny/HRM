@@ -122,6 +122,9 @@ def test_prod_settings_pass_deploy_check():
         "DJANGO_SETTINGS_MODULE": "config.settings.prod",
         "SECRET_KEY": "x" * 60 + "-not-a-real-secret-but-long-and-varied-0123456789",
         "ALLOWED_HOSTS": "api",
+        "EMAIL_HOST": "smtp.example.com",
+        "DEFAULT_FROM_EMAIL": "HRM <hr@example.com>",
+        "FRONTEND_URL": "https://hrm.example.com",
     }
     # Порожні, а не відсутні: інакше їх підставить локальний .env
     for name in ("AWS_ACCESS_KEY_ID", "AWS_SECRET_ACCESS_KEY", "AWS_SESSION_TOKEN"):

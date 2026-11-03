@@ -33,6 +33,12 @@ class LoginEmailThrottle(SimpleRateThrottle):
         }
 
 
+class PasswordResetEmailThrottle(LoginEmailThrottle):
+    """Листи зі скиданням на одну адресу — щоб форму не використали для спаму."""
+
+    scope = "password_reset"
+
+
 class AIChatThrottle(UserRateThrottle):
     """Кожне повідомлення асистенту — платний виклик моделі."""
 

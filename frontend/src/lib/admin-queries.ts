@@ -33,6 +33,14 @@ export function useCreateUser() {
   });
 }
 
+/** Повторне запрошення — поки людина не задала пароль. */
+export function useResendInvite() {
+  return useMutation({
+    mutationFn: (id: number) =>
+      unwrap(api.POST("/api/users/profile/{id}/invite/", { params: { path: { id } } })),
+  });
+}
+
 export function useUpdateUser(id: number) {
   const client = useQueryClient();
   return useMutation({
