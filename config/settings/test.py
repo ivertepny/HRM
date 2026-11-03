@@ -20,5 +20,9 @@ PASSWORD_HASHERS = ["django.contrib.auth.hashers.MD5PasswordHasher"]
 # Тести не залежать від Redis; кеш очищується перед кожним тестом (conftest)
 CACHES = {"default": {"BACKEND": "django.core.cache.backends.locmem.LocMemCache"}}
 
+# Slack у тестах — синхронно і без справжнього токена (мокається)
+SLACK_BOT_TOKEN = ""
+SLACK_ASYNC = False
+
 # OpenAI у тестах завжди мокається
 OPENAI_API_KEY = "test-key"

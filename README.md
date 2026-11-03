@@ -112,6 +112,7 @@ apps/
   equipment/         облік і видача обладнання
   attendance/        табель і місячний звіт
   ai_assistant/      LangGraph-агент з інструментом оргструктури
+  slack/             Slack-бот: сповіщення про заявки, нагадування (cron)
   core/              обробник помилок, пагінація, ліміти, health, /media, Sentry
 frontend/            Next.js-клієнт (див. frontend/README.md)
 nginx/, deploy.sh, docker-compose.server.yml, scripts/   продакшн

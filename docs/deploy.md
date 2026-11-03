@@ -34,6 +34,7 @@ push у `main` → CI → GitHub Actions по SSH запускає `deploy.sh` �
 | `scripts/restore.sh` | відновлення з бекапу (руйнівно, з підтвердженням) |
 | `scripts/offsite_backup.sh` | копія бекапів поза сервером (restic → Hetzner Storage Box) |
 | `scripts/setup_backup_cron.sh` | щоденний бекап о 03:00 |
+| `scripts/setup_reminders_cron.sh` | Slack-нагадування в робочі дні |
 | `.github/workflows/ci.yml` | перевірки на кожен PR і push |
 | `.github/workflows/deploy.yml` | push у `main`: CI, потім деплой по SSH (`START`: `0` / `1`) |
 
@@ -156,6 +157,44 @@ push у `main` проганяє CI, а крок деплою пропускає�
 Workflow — спільний шаблон сервера, погоджений з адміністратором. У ньому
 змінюється лише версія закріпленої дії `appleboy/ssh-action`, і її пропонує
 Dependabot.
+
+### 8. Slack (необов'язково)
+
+Бот пише людям в особисті повідомлення:
+- нова заявка на відпустку — тим, хто може її розглянути (HR і керівники
+  підрозділу та його предків);
+- рішення чи скасування — працівнику;
+- запрошення — новому користувачу (дублює лист);
+- щоденні нагадування (cron).
+
+Людей бот знаходить за робочим email, тож пошта в HRM має збігатися з поштою в
+Slack. До нашого сервера Slack не звертається: запити лише вихідні, а Django
+лишається закритим. Коментарі до заявок у Slack не потрапляють, лише хто, що,
+коли і посилання.
+
+1. **Створити застосунок:** api.slack.com/apps → *Create New App* → *From
+   scratch*, у потрібному workspace.
+2. **Права бота:** *OAuth & Permissions* → *Bot Token Scopes*: `chat:write`,
+   `users:read`, `users:read.email`.
+3. **Особисті повідомлення:** *App Home* → *Messages Tab* увімкнути, а також
+   «Allow users to send Slash commands and messages from the messages tab».
+   Без цього повідомлення бота не відображатимуться в особистих.
+4. **Токен:** *Install to Workspace* → скопіювати **Bot User OAuth Token**
+   (`xoxb-…`) у `.env` як `SLACK_BOT_TOKEN` і перезапустити стек (`bash deploy.sh`).
+5. **Нагадування:** `bash scripts/setup_reminders_cron.sh`. Розклад:
+   - о 09:30 пн–пт — скільки заявок чекає розгляду;
+   - об 11:00 пн–пт — хто ще не відмітився в табелі (у свята й відпустку — ні).
+
+   Час — серверний, перевірте `timedatectl`. Лог —
+   `/www/hrm-backups/reminders.log`.
+
+Перевірка вручну:
+`docker compose -f docker-compose.server.yml exec api python manage.py slack_reminders --vacations`.
+
+Сповіщення — best-effort. Якщо Slack недоступний, людини немає у workspace або
+процес перезапустився під час надсилання, повідомлення просто не прийде.
+Кадрові дії від цього не ламаються, а помилки пишуться в лог і Sentry.
+Нагадування того самого виду приходить людині не частіше разу на день.
 
 ## Щоденна робота
 

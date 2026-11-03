@@ -19,8 +19,9 @@ from apps.access.permissions import HasPermission
 from apps.access.services import get_access, grant_default_role, scope_queryset
 from apps.core.exceptions import ServiceUnavailable
 from apps.core.throttling import LoginEmailThrottle, PasswordResetEmailThrottle
+from apps.slack import notify as slack
 
-from .emails import send_invite, send_password_reset, try_send
+from .emails import invite_link, send_invite, send_password_reset, try_send
 from .filters import UserFilter
 from .models import User
 from .serializers import (
@@ -69,6 +70,7 @@ class RegisterView(generics.CreateAPIView):
         grant_default_role(user, granted_by=self.request.user)
         # Невдале надсилання не скасовує створений запис — HR надішле ще раз
         user.invite_sent = try_send(send_invite, user, invited_by=self.request.user)
+        slack.invite(user, invite_link(user))
 
 
 def revoke_sessions(user):
@@ -193,6 +195,7 @@ class ResendInviteView(UserScopeMixin, generics.GenericAPIView):
             raise ValidationError({"detail": "Обліковий запис вимкнено."})
         if not try_send(send_invite, user, invited_by=request.user):
             raise ServiceUnavailable("Не вдалося надіслати лист. Спробуйте пізніше.")
+        slack.invite(user, invite_link(user))
         return Response(status=status.HTTP_204_NO_CONTENT)
 
 

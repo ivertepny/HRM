@@ -145,7 +145,12 @@ def scope_queryset(request, queryset, codename, unit_field=None, owner=None):
     без нього scoped-ролі нічого не відкривають (ресурс лише глобальний).
     owner — Q-умова "власні записи", які видно завжди.
     """
-    access = get_access(request)
+    return scope_for_access(get_access(request), queryset, codename, unit_field, owner)
+
+
+def scope_for_access(access, queryset, codename, unit_field=None, owner=None):
+    """Те саме, що scope_queryset, але для UserAccess поза HTTP-запитом
+    (management-команди, нагадування)."""
     units = access.units_for(codename)
     if units is None:
         return queryset
@@ -169,6 +174,28 @@ def grant_default_role(user, granted_by=None):
         user=user, role=role, structural_unit=None, defaults={"granted_by": granted_by}
     )
     return assignment
+
+
+def users_with_permission(codename, unit=None, anywhere=False):
+    """Активні користувачі, яким роль дає `codename` глобально або (з unit) —
+    на цей підрозділ чи його предка; anywhere=True — будь-яке призначення,
+    зокрема лише на якийсь підрозділ. Для сповіщень: кому слати заявку на
+    розгляд. Суперкористувачі без ролей сюди не входять — їм не пишемо."""
+    from apps.users.models import User
+
+    resource = codename.split(":")[0]
+    granted = [codename, f"{resource}:{WILDCARD}", f"{WILDCARD}:{WILDCARD}"]
+    where = Q(structural_unit__isnull=True)
+    if unit is not None:
+        where |= Q(structural_unit__in=unit.get_ancestors(include_self=True))
+    assignments = UserRole.objects.active().filter(
+        role__permissions__codename__in=granted
+    )
+    if not anywhere:
+        assignments = assignments.filter(where)
+    return User.objects.filter(
+        is_active=True, pk__in=assignments.values("user_id")
+    ).order_by("pk")
 
 
 def get_access(request):

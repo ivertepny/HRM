@@ -29,6 +29,10 @@ def _send(user, subject, template, context):
     send_mail(subject, body, None, [user.email])
 
 
+def invite_link(user):
+    return _link("/invite", user, invite_token)
+
+
 def send_invite(user, invited_by=None):
     """Запрошення: посилання, щоб самому задати пароль (діє INVITE_TOKEN_SECONDS)."""
     _send(
@@ -36,7 +40,7 @@ def send_invite(user, invited_by=None):
         "Запрошення до HR-системи",
         "invite",
         {
-            "link": _link("/invite", user, invite_token),
+            "link": invite_link(user),
             "days": settings.INVITE_TOKEN_SECONDS // 86400,
             "invited_by": invited_by,
         },

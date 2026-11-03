@@ -8,6 +8,7 @@ from rest_framework.response import Response
 
 from apps.access.permissions import HasPermission, ensure_permission
 from apps.access.services import get_access, scope_queryset
+from apps.slack import notify as slack
 
 from .filters import VacationRequestFilter
 from .models import VacationRequest
@@ -72,7 +73,8 @@ class VacationRequestViewSet(
             ensure_permission(
                 self.request, "vacations:manage", employee.structural_unit
             )
-        serializer.save(created_by=self.request.user)
+        vacation = serializer.save(created_by=self.request.user)
+        slack.vacation_submitted(vacation, by=self.request.user)
 
     def _decide(self, request, method):
         vacation = self.get_object()
@@ -81,6 +83,7 @@ class VacationRequestViewSet(
         getattr(vacation, method)(
             request.user, serializer.validated_data.get("comment", "")
         )
+        slack.vacation_decided(vacation)
         return Response(self.get_serializer(vacation).data)
 
     @extend_schema(
@@ -116,4 +119,5 @@ class VacationRequestViewSet(
         ):
             raise PermissionDenied("Скасувати можна лише власну заявку.")
         vacation.cancel()
+        slack.vacation_cancelled(vacation, by=request.user)
         return Response(self.get_serializer(vacation).data)

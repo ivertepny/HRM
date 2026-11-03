@@ -42,6 +42,7 @@ INSTALLED_APPS = [
     "apps.vacations",
     "apps.equipment",
     "apps.attendance",
+    "apps.slack",
 ]
 
 MIDDLEWARE = [
@@ -173,6 +174,13 @@ EMAIL_TIMEOUT = 10  # секунд: недоступний SMTP не вішає 
 DEFAULT_FROM_EMAIL = env("DEFAULT_FROM_EMAIL", default="HRM <noreply@localhost>")
 # Для filebased-бекенду (e2e-стенд читає з файлів посилання з листів)
 EMAIL_FILE_PATH = env("EMAIL_FILE_PATH", default=None)
+
+# Slack-бот: особисті повідомлення про заявки й нагадування (apps/slack).
+# Порожній токен — Slack вимкнено. Scopes: chat:write, users:read, users:read.email
+SLACK_BOT_TOKEN = env("SLACK_BOT_TOKEN", default="")
+SLACK_TIMEOUT = 5  # секунд на запит до Slack
+# Надсилати у фоновому потоці (тести — синхронно, щоб перевіряти результат)
+SLACK_ASYNC = True
 
 # Адреса веб-клієнта — для посилань у листах (без "/" в кінці)
 FRONTEND_URL = env("FRONTEND_URL", default="http://localhost:3000").rstrip("/")
