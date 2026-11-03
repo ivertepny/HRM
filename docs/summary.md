@@ -46,7 +46,7 @@
 ## 3. Архітектура
 
 ```
-браузер ─HTTPS─▶ nginx хоста (TLS) ─▶ nginx стеку ─▶ Next.js ─▶ Django (gunicorn) ─▶ PostgreSQL
+браузер ─HTTPS─▶ Cloudflare ─HTTPS─▶ nginx хоста ─▶ nginx стеку ─▶ Next.js ─▶ Django (gunicorn) ─▶ PostgreSQL
                                      (ліміти, HSTS)   (BFF)        (API, права)       Redis
 ```
 
@@ -119,7 +119,7 @@ API: `/api/users/`, `/api/employees/`, `/api/company/`, `/api/access/`,
 Детально — у [plan.md](plan.md).
 
 - **Налаштування сервера:**
-  - DNS, certbot, диспетчер і секрети GitHub, `START: "1"` у `deploy.yml`;
+  - Cloudflare (Full strict, Origin CA, справжній IP клієнта), диспетчер і секрети GitHub, `START: "1"` у `deploy.yml`;
   - Storage Box з snapshots і `restic init`;
   - SMTP-провайдер, SPF і DKIM для домену відправника;
   - через кілька днів роботи HTTPS — HSTS на рік.

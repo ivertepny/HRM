@@ -95,7 +95,8 @@
 
 ## ✅ Крок 8 — Продакшн
 
-- [ ] gunicorn, Nginx, HTTPS (Let's Encrypt), `SECURE_SSL_REDIRECT`, HSTS, `collectstatic` — gunicorn, nginx стеку і HSTS ✅ (крок 7); HTTPS — certbot на nginx хоста при налаштуванні сервера; `SECURE_SSL_REDIRECT` і `collectstatic` не потрібні: редирект робить nginx хоста, Django назовні статику не віддає
+- [x] gunicorn, Nginx, HTTPS (Let's Encrypt), `SECURE_SSL_REDIRECT`, HSTS, `collectstatic` — gunicorn, nginx стеку і HSTS ✅ (крок 7); HTTPS — через Cloudflare, certbot не потрібен (окремий пункт нижче); `SECURE_SSL_REDIRECT` і `collectstatic` не потрібні: на HTTPS переводить Cloudflare, Django назовні статику не віддає
+- [ ] На сервері: HTTPS через Cloudflare — SSL Full (strict) + Origin CA-сертифікат на nginx хоста, справжній IP клієнта (`real_ip` з діапазонів Cloudflare, `CF-Connecting-IP`), Rocket Loader вимкнено, конфіг nginx хоста (`proxy_pass` на `127.0.0.12:8000`, `X-Forwarded-Proto https`) — див. `docs/deploy.md`, крок 4
 - [x] S3: приватний бакет + IAM-роль сервера (`GetObject` / `PutObject` / `DeleteObject` на `employees/*`) → не потрібно: файли у Docker volume на Hetzner (крок 7)
 - [x] Redis-кеш дозволів між запитами
 - [x] Довгий випадковий `SECRET_KEY` (шаблон `.env.production.example`; `check --deploy` без попереджень — у тестах)

@@ -4,8 +4,8 @@
 # Образи збираються на сервері з вихідного коду.
 #
 # Порт публікує лише nginx: 127.0.0.12:8000 (127.0.0.10 — strava,
-# 127.0.0.11 — cosmetology). nginx хоста завершує TLS і проксує сюди,
-# передаючи X-Forwarded-For і X-Forwarded-Proto (https).
+# 127.0.0.11 — cosmetology). Перед сервером — Cloudflare; nginx хоста (Origin CA)
+# проксує сюди, передаючи X-Forwarded-For і X-Forwarded-Proto (https).
 name: hrm
 
 x-logging: &logging

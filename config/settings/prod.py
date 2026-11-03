@@ -1,7 +1,7 @@
 """Продакшн (docker-compose.server.yml на VPS).
 
 Django в інтернет не виходить: браузер говорить лише з Next.js (BFF), а той —
-з Django всередині мережі compose (http://api:8000). TLS завершує nginx хоста.
+з Django всередині мережі compose (http://api:8000). HTTPS — Cloudflare і nginx хоста.
 """
 
 import os
@@ -28,7 +28,7 @@ SECURE_HSTS_SECONDS = env.int("SECURE_HSTS_SECONDS", default=3600)
 SECURE_HSTS_INCLUDE_SUBDOMAINS = True
 
 SILENCED_SYSTEM_CHECKS = [
-    # SECURE_SSL_REDIRECT: HTTPS форсує nginx хоста; Next і healthcheck ходять
+    # SECURE_SSL_REDIRECT: HTTPS форсує Cloudflare; Next і healthcheck ходять
     # у Django по http усередині мережі compose — редирект їх зламав би.
     "security.W008",
     # HSTS preload — фактично незворотне рішення для домену; не за замовчуванням

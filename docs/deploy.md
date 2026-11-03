@@ -4,7 +4,7 @@ HRM працює на тому ж VPS, що й cosmetology / strava-ai-coach. С
 push у `main` → CI → GitHub Actions по SSH запускає `deploy.sh` на сервері.
 
 ```
-браузер ──HTTPS──▶ nginx хоста (TLS, Let's Encrypt)
+браузер ──HTTPS──▶ Cloudflare ──HTTPS (Origin CA)──▶ nginx хоста
                      │  127.0.0.12:8000
                      ▼
                    hrm-nginx ──▶ hrm-frontend (Next.js, BFF) ──▶ hrm-api (gunicorn + Django)
@@ -90,30 +90,94 @@ bash scripts/setup_backup_cron.sh
 
 Контейнер `api` при кожному старті сам виконує `migrate` і `seed_roles`.
 
-### 4. nginx хоста і TLS
+### 4. Cloudflare і nginx хоста
 
-`/etc/nginx/sites-available/hrm`, потім `ln -s` у `sites-enabled` і
-`sudo certbot --nginx -d hrm.example.com`. Certbot додасть блок 443 і
-редирект з 80. Всередині `server` для 443 потрібні такі директиви:
+Домен працює через Cloudflare (проксі, оранжева хмарка). TLS для браузера
+завершує Cloudflare, тож certbot не потрібен. Від Cloudflare до сервера —
+окреме HTTPS-з'єднання з сертифікатом **Cloudflare Origin CA**.
+
+**У Cloudflare (dashboard домену):**
+
+- **SSL/TLS → Overview: Full (strict).** Режим Flexible не підходить: у ньому
+  трафік від Cloudflare до сервера, разом із паролями й зарплатами, іде
+  відкритим текстом.
+- **SSL/TLS → Origin Server → Create Certificate** (RSA, 15 років). Сертифікат
+  і ключ збережіть на сервері, наприклад у `/etc/ssl/cloudflare/hrm.pem` і
+  `hrm.key` (`chmod 600` на ключ).
+- **SSL/TLS → Edge Certificates:**
+  - *Always Use HTTPS* — увімкнути;
+  - *Minimum TLS* — 1.2;
+  - *HSTS* — **не вмикати**: заголовок уже ставить `nginx/nginx.conf`, і другий
+    дублював би його з іншим `max-age`.
+- **Speed → Optimization:** вимкнути *Rocket Loader*. Він підміняє скрипти
+  сторінки, а CSP застосунку (`script-src 'self'`) їх заблокує, і сторінки не
+  працюватимуть. З тієї ж причини не вмикайте автовставку *Web Analytics*
+  (beacon): CSP його відкине, у консолі будуть помилки.
+- **Кеш** лишіть за замовчуванням. Правило *Cache Everything* не підходить:
+  сторінки й API залежать від користувача. Хешовані `/_next/static/`
+  Cloudflare кешує сам.
+
+**Справжній IP клієнта.** Без цього кроку всі запити приходять на сервер з
+адрес Cloudflare. Тоді ліміти за IP у `nginx/nginx.conf` (вхід — 10 запитів
+за хвилину) стають спільними для всіх користувачів, і вхід зупиниться вже
+зранку.
+
+Налаштування `real_ip` діє на весь nginx хоста, тобто на всі сайти сервера,
+тож узгодьте його з адміністратором. Діапазони Cloudflare беруться з їхнього
+сайту:
+
+```bash
+{
+  for ip in $(curl -fsS https://www.cloudflare.com/ips-v4) $(curl -fsS https://www.cloudflare.com/ips-v6); do
+    echo "set_real_ip_from $ip;"
+  done
+  echo "real_ip_header CF-Connecting-IP;"
+} | sudo tee /etc/nginx/conf.d/cloudflare-realip.conf
+```
+
+Діапазони змінюються рідко. Ту саму команду можна раз на кілька місяців
+запускати з cron, після неї потрібен `nginx -s reload`. Бажано ще приймати
+443-й порт лише з адрес Cloudflare (ufw чи файрвол Hetzner Cloud): так сервер
+не обійдуть напряму за IP.
+
+**`/etc/nginx/sites-available/hrm`**, потім `ln -s` у `sites-enabled` і
+`sudo nginx -t && sudo nginx -s reload`:
 
 ```nginx
 server {
+    listen 443 ssl;
+    listen [::]:443 ssl;
+    http2 on;
     server_name hrm.example.com;
+
+    ssl_certificate     /etc/ssl/cloudflare/hrm.pem;
+    ssl_certificate_key /etc/ssl/cloudflare/hrm.key;
+
     client_max_body_size 11m;               # завантаження файлів до 10 МБ
 
     location / {
         proxy_pass http://127.0.0.12:8000;
         proxy_http_version 1.1;
         proxy_set_header Host $host;
-        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        # Після real_ip $remote_addr — справжній клієнт, а не Cloudflare
+        proxy_set_header X-Forwarded-For $remote_addr;
         proxy_set_header X-Forwarded-Proto https;
         proxy_read_timeout 120s;            # AI-асистент
     }
 }
 ```
 
+Блок для порту 80 не потрібен: на HTTPS переводить Cloudflare (*Always Use
+HTTPS*).
+
 `X-Forwarded-Proto https` обов'язковий. Від нього залежать HSTS у
 `nginx/nginx.conf` і `SECURE_PROXY_SSL_HEADER` у Django.
+
+**Ліміт 100 секунд.** На безкоштовному й Pro-тарифах Cloudflare обриває
+запит, якщо відповіді немає довше 100 с: користувач бачить помилку 524.
+Звичайні запити вкладаються з великим запасом. Ризик є лише в довгої відповіді
+AI-асистента з кількома викликами моделі. Якщо 524 трапляються, зменште
+`AI_RECURSION_LIMIT` або `OPENAI_TIMEOUT_AI` у `config/settings/base.py`.
 
 ### 5. Користувач деплою і диспетчер
 
