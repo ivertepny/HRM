@@ -1,20 +1,23 @@
-# Кожен push у main: CI (ci.yml), потім SSH на VPS — там ключ обмежений
-# командою `bash /www/hrm/deploy.sh` (git reset + бекап + docker compose up).
-# Невдалий CI — деплою немає.
-#
-# Поки сервер не налаштовано, деплой пропускається: увімкнути — змінна
-# репозиторію DEPLOY_ENABLED=true (Settings → Secrets and variables → Actions
-# → Variables). Секрети — в environment `production`, див. docs/deploy.md.
-name: Deploy
+# Every push to main: CI, then GitHub Actions SSHes into the server as the deploy user,
+# whose login shell is the dispatcher: it takes the repository name and runs
+# /www/hrm/deploy.sh (docs/deploy.md). A failed CI skips the deploy.
+# The shared template of the server (agreed with its administrator): change only
+# the pinned action's version (Dependabot).
+name: deploy via ssh
 
 on:
   push:
-    branches: [main]
-  workflow_dispatch:
+    branches:
+      - main
 
 permissions: {}
 
-# Один деплой за раз; новіший push чекає, а не обриває деплой посередині
+# Temporary, until the server is ready (docs/deploy.md): "0" runs CI but skips the deploy
+# step; "1" deploys. Remove this and the step's `if:` once production is live.
+env:
+  START: "0"
+
+# One deploy at a time; a newer push waits instead of cancelling a deploy halfway.
 concurrency:
   group: production
   cancel-in-progress: false
@@ -25,32 +28,22 @@ jobs:
     permissions:
       contents: read
 
-  deploy:
+  build:
     needs: ci
-    if: vars.DEPLOY_ENABLED == 'true'
-    runs-on: ubuntu-24.04
-    timeout-minutes: 20
-    environment: production
+    name: Deploy to the Production
+    runs-on: ubuntu-latest
+    # Sends the repository name over SSH and reads nothing from the repository.
     permissions: {}
+
     steps:
-      - name: Deploy over SSH
-        env:
-          SSH_KEY: ${{ secrets.DEPLOY_SSH_KEY }}
-          # Рядок(и) з `ssh-keyscan <host>`, звірені з ключем сервера:
-          # хост перевіряється, а не приймається наосліп
-          KNOWN_HOSTS: ${{ secrets.DEPLOY_KNOWN_HOSTS }}
-          DEPLOY_HOST: ${{ secrets.DEPLOY_HOST }}
-          DEPLOY_USER: ${{ secrets.DEPLOY_USER }}
-          DEPLOY_PORT: ${{ vars.DEPLOY_PORT || '22' }}
-        run: |
-          install -d -m 700 ~/.ssh
-          printf '%s\n' "$SSH_KEY" > ~/.ssh/deploy_key
-          chmod 600 ~/.ssh/deploy_key
-          printf '%s\n' "$KNOWN_HOSTS" > ~/.ssh/known_hosts
-          # Команду визначає authorized_keys на сервері, не цей рядок
-          ssh -i ~/.ssh/deploy_key -p "$DEPLOY_PORT" \
-            -o IdentitiesOnly=yes -o BatchMode=yes -o StrictHostKeyChecking=yes \
-            "$DEPLOY_USER@$DEPLOY_HOST" deploy
-      - name: Remove key
-        if: always()
-        run: rm -f ~/.ssh/deploy_key
+      - name: deploy on push
+        if: ${{ env.START == '1' }}
+        # v1.2.5, pinned by commit: a moved tag or branch cannot change the code that gets
+        # the deploy key. Dependabot proposes updates.
+        uses: appleboy/ssh-action@0ff4204d59e8e51228ff73bce53f80d53301dee2 # v1.2.5
+        with:
+          host: ${{ secrets.DEPLOYHOST }}
+          username: ${{ secrets.DEPLOYLOGIN }}
+          key: ${{ secrets.DEPLOYKEY }}
+          port: 22
+          script: ${{ github.event.repository.name }}

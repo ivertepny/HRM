@@ -1,6 +1,7 @@
 #!/bin/bash
-# Деплой на VPS. Запускає GitHub Actions по SSH (deploy-ssh.yml) — ключ у
-# authorized_keys обмежений командою `bash /www/hrm/deploy.sh`; вручну — так само.
+# Деплой на VPS. Запускає GitHub Actions по SSH (.github/workflows/deploy.yml):
+# логін-шел користувача деплою — диспетчер, він за назвою репозиторію (HRM)
+# викликає `bash /www/hrm/deploy.sh`. Вручну — так само.
 #
 # Тіло — у функції: bash дочитує скрипт під час виконання, а git reset
 # нижче може його замінити. Функцію bash розбирає цілком до запуску.

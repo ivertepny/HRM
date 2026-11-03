@@ -35,7 +35,7 @@ push у `main` → CI → GitHub Actions по SSH запускає `deploy.sh` �
 | `scripts/offsite_backup.sh` | копія бекапів поза сервером (restic → Hetzner Storage Box) |
 | `scripts/setup_backup_cron.sh` | щоденний бекап о 03:00 |
 | `.github/workflows/ci.yml` | перевірки на кожен PR і push |
-| `.github/workflows/deploy.yml` | push у `main`: CI, потім деплой |
+| `.github/workflows/deploy.yml` | push у `main`: CI, потім деплой по SSH (`START`: `0` / `1`) |
 
 ## Перше налаштування сервера
 
@@ -114,42 +114,48 @@ server {
 `X-Forwarded-Proto https` обов'язковий. Від нього залежать HSTS у
 `nginx/nginx.conf` і `SECURE_PROXY_SSL_HEADER` у Django.
 
-### 5. Ключ для GitHub Actions
+### 5. Користувач деплою і диспетчер
 
-Ключ окремий для цього проєкту і обмежений однією командою. Навіть якщо він
-витече, з ним можна лише запустити деплой.
+Схема спільна для всіх проєктів на сервері, як у cosmetology. Її налаштовує
+адміністратор сервера.
 
-```bash
-ssh-keygen -t ed25519 -N "" -C "github-deploy-hrm" -f hrm_deploy
-```
+- GitHub Actions заходить по SSH під користувачем деплою і передає лише назву
+  репозиторію (`HRM`).
+- Логін-шелом цього користувача є **диспетчер**. Він приймає назву
+  репозиторію і запускає відповідний скрипт: для `HRM` це
+  `bash /www/hrm/deploy.sh`.
+- Інших команд через цей вхід виконати не можна. Тож навіть ключ, що витік,
+  дає лише змогу запустити деплой.
 
-На сервері `hrm_deploy.pub` дописується в `~deploy/.ssh/authorized_keys` одним
-рядком:
+Що потрібно від адміністратора:
 
-```
-command="bash /www/hrm/deploy.sh",no-port-forwarding,no-X11-forwarding,no-agent-forwarding,no-pty ssh-ed25519 AAAA… github-deploy-hrm
-```
+1. Додати в диспетчер відповідність `HRM` → `/www/hrm/deploy.sh`.
+2. Згенерувати окремий ключ для цього проєкту:
+   `ssh-keygen -t ed25519 -N "" -C "github-deploy-hrm" -f hrm_deploy`.
+   Публічну частину (`hrm_deploy.pub`) він дописує в
+   `~<користувач деплою>/.ssh/authorized_keys`.
 
 ### 6. Секрети в GitHub
 
-У Settings → Environments створіть environment `production`. За бажанням
-увімкніть Required reviewers: тоді кожен деплой треба буде підтвердити
-вручну. Потім додайте:
+Settings → Secrets and variables → Actions → **Repository secrets**:
 
-| Тип | Назва | Значення |
-|-----|-------|----------|
-| secret | `DEPLOY_HOST` | IP або домен сервера |
-| secret | `DEPLOY_USER` | `deploy` |
-| secret | `DEPLOY_SSH_KEY` | вміст приватного `hrm_deploy` (після цього файл видалити) |
-| secret | `DEPLOY_KNOWN_HOSTS` | вивід `ssh-keyscan -t ed25519 <host>` |
-| variable (repo) | `DEPLOY_ENABLED` | `true` — вмикає job деплою |
-| variable (repo) | `DEPLOY_PORT` | порт SSH, якщо не 22 |
+| Назва | Значення |
+|-------|----------|
+| `DEPLOYHOST` | IP або домен сервера |
+| `DEPLOYLOGIN` | користувач деплою |
+| `DEPLOYKEY` | вміст приватного `hrm_deploy` (після цього файл видалити) |
 
-`DEPLOY_KNOWN_HOSTS` спершу звірте з відбитком на самому сервері:
-`ssh-keygen -lf /etc/ssh/ssh_host_ed25519_key.pub`. Тоді Actions підключиться
-лише до справжнього сервера.
+### 7. Увімкнути деплой
 
-Поки `DEPLOY_ENABLED` не задано, push у `main` проганяє лише CI.
+Поки сервер не готовий, у `.github/workflows/deploy.yml` стоїть `START: "0"`:
+push у `main` проганяє CI, а крок деплою пропускається.
+
+Коли сервер готовий, поставте `START: "1"` і зробіть push. Після запуску
+продакшну `env.START` і `if:` кроку можна прибрати.
+
+Workflow — спільний шаблон сервера, погоджений з адміністратором. У ньому
+змінюється лише версія закріпленої дії `appleboy/ssh-action`, і її пропонує
+Dependabot.
 
 ## Щоденна робота
 

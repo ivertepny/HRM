@@ -84,14 +84,14 @@
 ## ✅ Крок 7 — CI/CD (GitHub Actions) і деплой на Hetzner
 
 - [x] PR: `ruff check`, `ruff format --check`, `pytest` на PostgreSQL, `spectacular --validate`, Docker build (`.github/workflows/ci.yml`; образи збирає e2e-job)
-- [x] Deploy з `main`; доступ до AWS лише через OIDC + assume-role → деплой на Hetzner VPS по SSH, як у cosmetology (`deploy.yml` → `deploy.sh`); ключ обмежений однією командою, хост звіряється з `known_hosts`
+- [x] Deploy з `main`; доступ до AWS лише через OIDC + assume-role → деплой на Hetzner VPS по SSH, як у cosmetology (`deploy.yml` → `deploy.sh`); спільний шаблон сервера: `appleboy/ssh-action` за SHA, диспетчер на сервері за назвою репозиторію
 - [x] CI перевіряє, що `openapi.json` і `schema.d.ts` не застаріли; `pip-audit`, `npm audit`; e2e Playwright на ізольованому стенді
 - [x] Actions закріплені за SHA; Dependabot (actions, uv, npm, Docker)
 - [x] Продакшн-стек `docker-compose.server.yml`: gunicorn, nginx стеку на `127.0.0.12:8000`, healthcheck-и, `deploy.sh` з `--wait`
 - [x] Файли працівників — у volume з перевіркою прав (`MediaView`; раніше в dev `/media/` віддавався без перевірки)
 - [x] `GET /api/health` (Next → Django → БД і Redis) для моніторингу
 - [x] Бекапи БД і файлів (перед кожним деплоєм і щодня), `restore.sh`; `docs/deploy.md`
-- [ ] Налаштувати сервер за `docs/deploy.md` і ввімкнути `DEPLOY_ENABLED=true`
+- [ ] Налаштувати сервер за `docs/deploy.md` і ввімкнути деплой (`START: "1"` у `deploy.yml`)
 
 ## ✅ Крок 8 — Продакшн
 

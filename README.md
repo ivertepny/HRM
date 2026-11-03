@@ -129,6 +129,6 @@ docs/                план, доступ, деплой, зведення
 ## Продакшн
 
 Push у `main` запускає CI (`.github/workflows/ci.yml`). Після нього, якщо
-ввімкнено `DEPLOY_ENABLED`, GitHub Actions по SSH запускає `deploy.sh` на
-Hetzner VPS. Як налаштувати сервер, бекапи і відновлення — у
+в `deploy.yml` стоїть `START: "1"`, GitHub Actions по SSH запускає
+`deploy.sh` на Hetzner VPS. Як налаштувати сервер, бекапи і відновлення — у
 [docs/deploy.md](docs/deploy.md).

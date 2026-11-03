@@ -107,8 +107,8 @@ API: `/api/users/`, `/api/employees/`, `/api/company/`, `/api/access/`,
   - фронт: lint, тести, typecheck, build, `npm audit`;
   - e2e Playwright на продакшн-образах;
   - actions закріплені за SHA, Dependabot оновлює залежності щотижня.
-- **Деплой:** після CI на `main` GitHub Actions по SSH запускає `deploy.sh`
-  (ключ обмежений однією командою): `git reset`, бекап,
+- **Деплой:** після CI на `main` GitHub Actions по SSH передає назву
+  репозиторію диспетчеру на сервері, той запускає `deploy.sh`: `git reset`, бекап,
   `docker compose up --build --wait`. Деталі — у [deploy.md](deploy.md).
 - **Локально:** `docker compose up` (dev), `docker-compose.e2e.yml`
   (ізольований e2e-стенд), `dev.ps1` (команди розробки).
@@ -118,7 +118,7 @@ API: `/api/users/`, `/api/employees/`, `/api/company/`, `/api/access/`,
 Детально — у [plan.md](plan.md).
 
 - **Налаштування сервера:**
-  - DNS, certbot, секрети GitHub і `DEPLOY_ENABLED`;
+  - DNS, certbot, диспетчер і секрети GitHub, `START: "1"` у `deploy.yml`;
   - Storage Box з snapshots і `restic init`;
   - SMTP-провайдер, SPF і DKIM для домену відправника;
   - через кілька днів роботи HTTPS — HSTS на рік.
