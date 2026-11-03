@@ -1,0 +1,56 @@
+# Кожен push у main: CI (ci.yml), потім SSH на VPS — там ключ обмежений
+# командою `bash /www/hrm/deploy.sh` (git reset + бекап + docker compose up).
+# Невдалий CI — деплою немає.
+#
+# Поки сервер не налаштовано, деплой пропускається: увімкнути — змінна
+# репозиторію DEPLOY_ENABLED=true (Settings → Secrets and variables → Actions
+# → Variables). Секрети — в environment `production`, див. docs/deploy.md.
+name: Deploy
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions: {}
+
+# Один деплой за раз; новіший push чекає, а не обриває деплой посередині
+concurrency:
+  group: production
+  cancel-in-progress: false
+
+jobs:
+  ci:
+    uses: ./.github/workflows/ci.yml
+    permissions:
+      contents: read
+
+  deploy:
+    needs: ci
+    if: vars.DEPLOY_ENABLED == 'true'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    environment: production
+    permissions: {}
+    steps:
+      - name: Deploy over SSH
+        env:
+          SSH_KEY: ${{ secrets.DEPLOY_SSH_KEY }}
+          # Рядок(и) з `ssh-keyscan <host>`, звірені з ключем сервера:
+          # хост перевіряється, а не приймається наосліп
+          KNOWN_HOSTS: ${{ secrets.DEPLOY_KNOWN_HOSTS }}
+          DEPLOY_HOST: ${{ secrets.DEPLOY_HOST }}
+          DEPLOY_USER: ${{ secrets.DEPLOY_USER }}
+          DEPLOY_PORT: ${{ vars.DEPLOY_PORT || '22' }}
+        run: |
+          install -d -m 700 ~/.ssh
+          printf '%s\n' "$SSH_KEY" > ~/.ssh/deploy_key
+          chmod 600 ~/.ssh/deploy_key
+          printf '%s\n' "$KNOWN_HOSTS" > ~/.ssh/known_hosts
+          # Команду визначає authorized_keys на сервері, не цей рядок
+          ssh -i ~/.ssh/deploy_key -p "$DEPLOY_PORT" \
+            -o IdentitiesOnly=yes -o BatchMode=yes -o StrictHostKeyChecking=yes \
+            "$DEPLOY_USER@$DEPLOY_HOST" deploy
+      - name: Remove key
+        if: always()
+        run: rm -f ~/.ssh/deploy_key

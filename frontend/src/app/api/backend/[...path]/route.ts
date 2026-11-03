@@ -1,14 +1,7 @@
 import { cookies } from "next/headers";
 import { NextResponse, type NextRequest } from "next/server";
 
-import {
-  ACCESS_COOKIE,
-  BACKEND_URL,
-  clearTokens,
-  REFRESH_COOKIE,
-  refreshTokens,
-  writeTokens,
-} from "@/lib/server/backend";
+import { BACKEND_URL, fetchWithSession } from "@/lib/server/backend";
 import { backendUrl, forwardHeaders, isAllowedOrigin } from "@/lib/server/proxy-utils";
 
 /**
@@ -36,17 +29,9 @@ async function handle(request: NextRequest) {
       redirect: "manual",
     });
 
-  let response = await send(store.get(ACCESS_COOKIE)?.value);
-
-  if (response.status === 401) {
-    const refresh = store.get(REFRESH_COOKIE)?.value;
-    const tokens = refresh ? await refreshTokens(refresh) : null;
-    if (!tokens) {
-      clearTokens(store);
-      return NextResponse.json({ detail: "Сесія завершилась. Увійдіть знову." }, { status: 401 });
-    }
-    writeTokens(store, tokens);
-    response = await send(tokens.access);
+  const response = await fetchWithSession(store, send);
+  if (!response) {
+    return NextResponse.json({ detail: "Сесія завершилась. Увійдіть знову." }, { status: 401 });
   }
 
   // fetch уже розпакував тіло — заголовки стиснення й довжини не пересилаємо

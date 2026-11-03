@@ -1,0 +1,132 @@
+# Кожен pull request і push у гілки. Push у main проганяє ці ж jobs через
+# deploy.yml (workflow_call) — перед самим деплоєм.
+#
+# Actions закріплені за SHA комітів, а не тегами: перенесений тег не змінить
+# того, що тут виконується. SHA оновлює Dependabot (.github/dependabot.yml).
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches-ignore: [main]
+  workflow_call:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  # Новіший push у гілку робить старий запуск зайвим; у main запуск — частина
+  # деплою і має завершитись
+  cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
+
+jobs:
+  backend:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    services:
+      postgres:
+        image: postgres:17.0-alpine # як у docker-compose*.yml
+        env:
+          POSTGRES_DB: hrm
+          POSTGRES_USER: hrm
+          POSTGRES_PASSWORD: ci-only
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd "pg_isready -U hrm"
+          --health-interval 5s --health-timeout 5s --health-retries 10
+    env:
+      SECRET_KEY: ci-only-not-a-secret
+      POSTGRES_HOST: 127.0.0.1
+      POSTGRES_PORT: "5432"
+      POSTGRES_DB: hrm
+      POSTGRES_USER: hrm
+      POSTGRES_PASSWORD: ci-only
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: astral-sh/setup-uv@c18668ad3cf93ea998bef934396af7bb5c839dc7 # v10.2.0
+        with:
+          version: "0.9.5" # як у Dockerfile
+          enable-cache: true
+          cache-dependency-glob: uv.lock
+      - run: uv sync --frozen
+      - run: uv run ruff check .
+      - run: uv run ruff format --check .
+      - run: uv run python manage.py makemigrations --check --dry-run
+      # Схема валідна і збігається із закомітженою (з неї генеруються типи фронту)
+      - name: OpenAPI schema is valid and up to date
+        run: |
+          uv run python manage.py spectacular --format openapi-json \
+            --file frontend/openapi.json --validate --fail-on-warn
+          git diff --exit-code -- frontend/openapi.json \
+            || { echo "::error::frontend/openapi.json застарів — запустіть npm run api:types"; exit 1; }
+      - run: uv run pytest
+      - name: Audit dependencies (production only)
+        run: |
+          uv export --frozen --no-dev --no-hashes --no-emit-project -o "$RUNNER_TEMP/requirements.txt"
+          uvx pip-audit==2.10.1 -r "$RUNNER_TEMP/requirements.txt" --disable-pip --no-deps
+
+  frontend:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    defaults:
+      run:
+        working-directory: frontend
+    env:
+      NEXT_TELEMETRY_DISABLED: "1"
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: 22 # як у frontend/Dockerfile
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+      - run: npm ci
+      - name: API types match openapi.json
+        run: |
+          npx openapi-typescript openapi.json -o src/lib/api/schema.d.ts
+          git diff --exit-code -- src/lib/api/schema.d.ts \
+            || { echo "::error::schema.d.ts застарів — запустіть npm run api:types"; exit 1; }
+      - run: npm run lint
+      - run: npm test
+      # Типи маршрутів (PageProps тощо) генеруються, а не комітяться
+      - run: npx next typegen
+      - run: npm run typecheck
+      - run: npm run build
+      - run: npm audit --omit=dev --audit-level=high
+
+  # Збирає обидва продакшн-образи і проганяє Playwright на ізольованому стенді
+  e2e:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 25
+    defaults:
+      run:
+        working-directory: frontend
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+      - run: npm ci
+      - run: npm run e2e:stack
+      - run: npx playwright install --with-deps chromium
+      - run: npx playwright test
+      - name: Stack logs
+        if: failure()
+        run: docker compose -f ../docker-compose.e2e.yml logs --no-color --tail 200
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        if: failure()
+        with:
+          name: playwright-report
+          path: frontend/playwright-report/
+          retention-days: 7
+      - if: always()
+        run: npm run e2e:down

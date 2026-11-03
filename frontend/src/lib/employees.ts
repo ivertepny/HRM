@@ -29,7 +29,7 @@ export function unitPath(unit: Pick<Unit, "name" | "ancestors">) {
 
 /**
  * Посилання на файл: локальні /media/ бекенду — через маршрут Next (з перевіркою
- * сесії); підписані S3-URL у prod — як є.
+ * сесії і прав на бекенді); інші абсолютні URL — як є.
  */
 export function fileHref(url?: string | null) {
   if (!url) return undefined;

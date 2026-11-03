@@ -2976,6 +2976,41 @@
                 }
             }
         },
+        "/api/health/": {
+            "get": {
+                "operationId": "health_retrieve",
+                "description": "Для healthcheck контейнера і зовнішнього моніторингу: БД і кеш живі.",
+                "summary": "Стан сервісу",
+                "tags": [
+                    "Health"
+                ],
+                "security": [
+                    {}
+                ],
+                "responses": {
+                    "200": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Health"
+                                }
+                            }
+                        },
+                        "description": ""
+                    },
+                    "503": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/HealthError"
+                                }
+                            }
+                        },
+                        "description": ""
+                    }
+                }
+            }
+        },
         "/api/users/login/": {
             "post": {
                 "operationId": "users_login_create",
@@ -4650,6 +4685,28 @@
                 ],
                 "type": "string",
                 "description": "* `hired` - Прийом\n* `changed` - Зміна\n* `fired` - Звільнення"
+            },
+            "Health": {
+                "type": "object",
+                "properties": {
+                    "status": {
+                        "type": "string"
+                    }
+                },
+                "required": [
+                    "status"
+                ]
+            },
+            "HealthError": {
+                "type": "object",
+                "properties": {
+                    "status": {
+                        "type": "string"
+                    }
+                },
+                "required": [
+                    "status"
+                ]
             },
             "History": {
                 "type": "object",

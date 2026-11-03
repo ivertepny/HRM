@@ -1,0 +1,51 @@
+# Щотижня; minor і patch — одним PR на екосистему. Кожен PR проходить CI.
+# Оновлення безпеки приходять окремо, щойно з'являється advisory.
+version: 2
+
+updates:
+  # Також оновлює SHA закріплених actions у .github/workflows
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+    groups:
+      actions:
+        patterns: ["*"]
+
+  - package-ecosystem: uv
+    directory: /
+    schedule:
+      interval: weekly
+    groups:
+      python:
+        update-types: [minor, patch]
+
+  - package-ecosystem: npm
+    directory: /frontend
+    schedule:
+      interval: weekly
+    groups:
+      npm:
+        update-types: [minor, patch]
+
+  - package-ecosystem: docker
+    directories: ["/", "/frontend"]
+    schedule:
+      interval: weekly
+    ignore:
+      # Версії Python і Node LTS — вручну (pyproject.toml, CI, Dockerfile разом)
+      - dependency-name: python
+        update-types: ["version-update:semver-major", "version-update:semver-minor"]
+      - dependency-name: node
+        update-types: ["version-update:semver-major"]
+
+  - package-ecosystem: docker-compose
+    directory: /
+    schedule:
+      interval: weekly
+    # Мажорні — вручну: нова мажорна Postgres потребує dump/restore даних
+    ignore:
+      - dependency-name: postgres
+        update-types: ["version-update:semver-major"]
+      - dependency-name: redis
+        update-types: ["version-update:semver-major"]

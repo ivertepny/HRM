@@ -10,3 +10,10 @@ logs
 docs
 media
 frontend
+# Серверні файли й CI — не потрібні в образі
+.github
+.env.*
+nginx
+scripts
+deploy.sh
+docker-compose*.yml

@@ -1,0 +1,139 @@
+# Продакшн-стек на VPS (той самий сервер, що й cosmetology / strava-ai-coach).
+# GitHub Actions заходить по SSH, ./deploy.sh у /www/hrm робить git reset і
+#   docker compose -f docker-compose.server.yml up -d --build
+# Образи збираються на сервері з вихідного коду.
+#
+# Порт публікує лише nginx: 127.0.0.12:8000 (127.0.0.10 — strava,
+# 127.0.0.11 — cosmetology). nginx хоста завершує TLS і проксує сюди,
+# передаючи X-Forwarded-For і X-Forwarded-Proto (https).
+name: hrm
+
+x-logging: &logging
+  driver: json-file
+  options:
+    max-size: "10m"
+    max-file: "5"
+
+services:
+  db:
+    image: postgres:17.0-alpine
+    container_name: hrm-db
+    restart: always
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:?задайте POSTGRES_DB у .env}
+      POSTGRES_USER: ${POSTGRES_USER:?задайте POSTGRES_USER у .env}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?задайте POSTGRES_PASSWORD у .env}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    networks: [hrm]
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+    logging: *logging
+
+  redis:
+    image: redis:7.4-alpine
+    container_name: hrm-redis
+    restart: always
+    # Лише кеш прав — без persistence; порт назовні не відкритий
+    command: redis-server --save "" --appendonly no
+    networks: [hrm]
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+    logging: *logging
+
+  # Міграції й системні ролі — перед gunicorn (CMD образу)
+  api:
+    build: .
+    image: hrm-api
+    container_name: hrm-api
+    restart: always
+    command: >
+      sh -c "python manage.py migrate --noinput &&
+             python manage.py seed_roles &&
+             exec gunicorn config.wsgi:application --bind 0.0.0.0:8000
+             --workers 3 --worker-class gthread --threads 4 --timeout 60
+             --access-logfile -"
+    env_file: .env
+    environment:
+      DJANGO_SETTINGS_MODULE: config.settings.prod
+      POSTGRES_HOST: db
+      POSTGRES_PORT: "5432"
+      REDIS_URL: redis://redis:6379/0
+    volumes:
+      - media:/usr/src/media
+    networks: [hrm]
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    healthcheck:
+      # Host "api" є в ALLOWED_HOSTS (ним же ходить Next)
+      test:
+        - CMD
+        - python
+        - -c
+        - "import urllib.request as u; u.urlopen(u.Request('http://127.0.0.1:8000/api/health/', headers={'Host': 'api'}), timeout=4)"
+      interval: 15s
+      timeout: 10s
+      retries: 10
+      start_period: 60s
+    logging: *logging
+
+  frontend:
+    build: ./frontend
+    image: hrm-frontend
+    container_name: hrm-frontend
+    restart: always
+    environment:
+      BACKEND_URL: http://api:8000
+    networks: [hrm]
+    depends_on:
+      api:
+        condition: service_healthy
+    healthcheck:
+      test:
+        - CMD
+        - node
+        - -e
+        - "fetch('http://127.0.0.1:3000/login').then(r => process.exit(r.ok ? 0 : 1), () => process.exit(1))"
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
+    logging: *logging
+
+  nginx:
+    image: nginx:1.29-alpine
+    container_name: hrm-nginx
+    restart: always
+    depends_on:
+      frontend:
+        condition: service_healthy
+    ports:
+      - "127.0.0.12:8000:80"
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+    networks: [hrm]
+    healthcheck:
+      # /nginx-health відповідає сам nginx — перевірка не залежить від frontend
+      test: ["CMD-SHELL", "nginx -t 2>/dev/null && wget -q --spider -T 3 http://127.0.0.1/nginx-health || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+      start_period: 5s
+    logging: *logging
+
+networks:
+  hrm:
+    name: hrm-network
+
+volumes:
+  postgres_data:
+  media:

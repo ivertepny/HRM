@@ -63,3 +63,26 @@ export async function refreshTokens(refresh: string): Promise<TokenPair | null> 
   const body = (await response.json()) as Partial<TokenPair>;
   return body.access ? { access: body.access, refresh: body.refresh ?? refresh } : null;
 }
+
+type SessionStore = CookieWriter & { get(name: string): { value: string } | undefined };
+
+/**
+ * Запит у Django від імені сесії: send(access) з токеном із cookie; на 401
+ * один раз оновлює токени і повторює. null — сесія недійсна (cookie стерто).
+ */
+export async function fetchWithSession(
+  store: SessionStore,
+  send: (access?: string) => Promise<Response>,
+): Promise<Response | null> {
+  const response = await send(store.get(ACCESS_COOKIE)?.value);
+  if (response.status !== 401) return response;
+
+  const refresh = store.get(REFRESH_COOKIE)?.value;
+  const tokens = refresh ? await refreshTokens(refresh) : null;
+  if (!tokens) {
+    clearTokens(store);
+    return null;
+  }
+  writeTokens(store, tokens);
+  return send(tokens.access);
+}

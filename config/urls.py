@@ -1,5 +1,3 @@
-from django.conf import settings
-from django.conf.urls.static import static
 from django.contrib import admin
 from django.urls import include, path
 from drf_spectacular.views import (
@@ -8,8 +6,11 @@ from drf_spectacular.views import (
     SpectacularSwaggerView,
 )
 
+from apps.core.views import HealthView, MediaView
+
 urlpatterns = [
     path("admin/", admin.site.urls),
+    path("api/health/", HealthView.as_view(), name="health"),
     path("api/schema/", SpectacularAPIView.as_view(), name="schema"),
     # Optional UI:
     path(
@@ -32,8 +33,6 @@ urlpatterns = [
     path("api/vacations/", include("apps.vacations.urls")),
     path("api/equipment/", include("apps.equipment.urls")),
     path("api/attendance/", include("apps.attendance.urls")),
+    # Файли працівників — з перевіркою доступу, в dev і в prod однаково
+    path("media/<path:path>", MediaView.as_view(), name="media"),
 ]
-
-if settings.DEBUG:
-    # У prod файли віддає S3 (підписані URL), не Django
-    urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)

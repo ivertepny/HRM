@@ -648,6 +648,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/health/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Стан сервісу
+         * @description Для healthcheck контейнера і зовнішнього моніторингу: БД і кеш живі.
+         */
+        get: operations["health_retrieve"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/users/login/": {
         parameters: {
             query?: never;
@@ -1169,6 +1189,12 @@ export interface components {
          * @enum {string}
          */
         EventEnum: "hired" | "changed" | "fired";
+        Health: {
+            status: string;
+        };
+        HealthError: {
+            status: string;
+        };
         History: {
             /** Format: date-time */
             history_date: string;
@@ -3359,6 +3385,33 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["Equipment"];
+                };
+            };
+        };
+    };
+    health_retrieve: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Health"];
+                };
+            };
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HealthError"];
                 };
             };
         };

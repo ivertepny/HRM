@@ -1,6 +1,6 @@
 # План розвитку HRM-системи
 
-> Оновлено: 31.10.2026
+> Оновлено: 03.11.2026
 
 ## ✅ Зроблено
 
@@ -12,7 +12,7 @@
 - [x] Дозволи на всіх ендпоінтах; власні дані доступні завжди; зарплата — окремо через `salary:read` / `write`; реєстрація лише через HR
 - [x] Працівник: рівень, зарплата, дата народження, фото, документи; автоматичний кадровий журнал (`CareerHistory`); `PROTECT` замість `CASCADE`
 - [x] Оргструктура: валідація дерева через API, історія змін з автором, SVG-діаграма
-- [x] S3 для файлів у prod — лише через IAM-роль (код готовий, підключення — при деплої)
+- [x] S3 для файлів у prod — лише через IAM-роль (код готовий, підключення — при деплої) → на кроці 7 замінено Docker volume: на Hetzner IAM-ролей немає
 - [x] AI-асистент на LangGraph / LangChain (`langchain-openai`): агент з інструментом оргструктури (з урахуванням прав), сесії в БД за `session_id`, ліміт історії, таймаут і 503 при збої LLM
 - [x] Redis-кеш (`CACHES` з `REDIS_URL`, сервіс у docker-compose): права користувача кешуються між запитами, версійна інвалідація при зміні ролей / дозволів, TTL з урахуванням тимчасових ролей, fallback на БД при недоступності Redis
 - [x] Технічний борг: `children_count`, без N+1 у списках (предки підрозділів, scope-перевірки зарплати), валюта зарплати (`salary_currency`), psycopg3 з `connect_timeout`
@@ -76,21 +76,30 @@
 
 ## ⏭ Крок 6 — Скидання пароля і запрошення
 
-- [ ] Email: AWS SES (через IAM-роль), SMTP / console для dev
+- [ ] Email: AWS SES (через IAM-роль), SMTP / console для dev — сервер тепер на Hetzner (без IAM-ролей), тож провайдера SMTP обрати на цьому кроці
 - [ ] `password-reset/` → `password-reset/confirm/` на `django.contrib.auth`
 - [ ] Лист-запрошення новим користувачам замість пароля від HR
 
-## Крок 7 — CI/CD (GitHub Actions)
+## ✅ Крок 7 — CI/CD (GitHub Actions) і деплой на Hetzner
 
-- [ ] PR: `ruff check`, `ruff format --check`, `pytest` на PostgreSQL, `spectacular --validate`, Docker build
-- [ ] Deploy з `main`; доступ до AWS лише через OIDC + assume-role
+- [x] PR: `ruff check`, `ruff format --check`, `pytest` на PostgreSQL, `spectacular --validate`, Docker build (`.github/workflows/ci.yml`; образи збирає e2e-job)
+- [x] Deploy з `main`; доступ до AWS лише через OIDC + assume-role → деплой на Hetzner VPS по SSH, як у cosmetology (`deploy.yml` → `deploy.sh`); ключ обмежений однією командою, хост звіряється з `known_hosts`
+- [x] CI перевіряє, що `openapi.json` і `schema.d.ts` не застаріли; `pip-audit`, `npm audit`; e2e Playwright на ізольованому стенді
+- [x] Actions закріплені за SHA; Dependabot (actions, uv, npm, Docker)
+- [x] Продакшн-стек `docker-compose.server.yml`: gunicorn, nginx стеку на `127.0.0.12:8000`, healthcheck-и, `deploy.sh` з `--wait`
+- [x] Файли працівників — у volume з перевіркою прав (`MediaView`; раніше в dev `/media/` віддавався без перевірки)
+- [x] `GET /api/health` (Next → Django → БД і Redis) для моніторингу
+- [x] Бекапи БД і файлів (перед кожним деплоєм і щодня), `restore.sh`; `docs/deploy.md`
+- [ ] Налаштувати сервер за `docs/deploy.md` і ввімкнути `DEPLOY_ENABLED=true`
 
 ## Крок 8 — Продакшн
 
-- [ ] gunicorn, Nginx, HTTPS (Let's Encrypt), `SECURE_SSL_REDIRECT`, HSTS, `collectstatic`
-- [ ] S3: приватний бакет + IAM-роль сервера (`GetObject` / `PutObject` / `DeleteObject` на `employees/*`)
+- [ ] gunicorn, Nginx, HTTPS (Let's Encrypt), `SECURE_SSL_REDIRECT`, HSTS, `collectstatic` — gunicorn, nginx стеку і HSTS ✅ (крок 7); HTTPS — certbot на nginx хоста при налаштуванні сервера; `SECURE_SSL_REDIRECT` і `collectstatic` не потрібні: редирект робить nginx хоста, Django назовні статику не віддає
+- [x] S3: приватний бакет + IAM-роль сервера (`GetObject` / `PutObject` / `DeleteObject` на `employees/*`) → не потрібно: файли у Docker volume на Hetzner (крок 7)
 - [x] Redis-кеш дозволів між запитами
-- [ ] Довгий випадковий `SECRET_KEY`
+- [x] Довгий випадковий `SECRET_KEY` (шаблон `.env.production.example`; `check --deploy` без попереджень — у тестах)
+- [ ] Копія бекапів поза сервером (Hetzner Storage Box: `rsync` / `borg`)
+- [ ] Підняти HSTS до 31536000, коли HTTPS кілька днів працює (`nginx.conf` і `.env`)
 
 ## Крок 9 — Документація
 
