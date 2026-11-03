@@ -6,7 +6,9 @@ set -euo pipefail
 app_dir="${APP_DIR:-/www/hrm}"
 backup_dir="${BACKUP_DIR:-/www/hrm-backups}"
 marker="# hrm backup"
-line="0 3 * * * bash $app_dir/scripts/backup.sh >> $backup_dir/backup.log 2>&1 $marker"
+# BACKUP_PING_URL (необов'язково) — URL моніторингу, напр. healthchecks.io
+ping="${BACKUP_PING_URL:+BACKUP_PING_URL=$BACKUP_PING_URL }"
+line="0 3 * * * ${ping}bash $app_dir/scripts/backup.sh >> $backup_dir/backup.log 2>&1 $marker"
 
 mkdir -p "$backup_dir"
 { crontab -l 2>/dev/null | grep -vF "$marker" || true; echo "$line"; } | crontab -

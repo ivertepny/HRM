@@ -13,6 +13,7 @@ from rest_framework_simplejwt.tokens import RefreshToken
 
 from apps.access.permissions import HasPermission
 from apps.access.services import get_access, grant_default_role, scope_queryset
+from apps.core.throttling import LoginEmailThrottle
 
 from .filters import UserFilter
 from .models import User
@@ -55,6 +56,7 @@ class RegisterView(generics.CreateAPIView):
 class LoginView(generics.GenericAPIView):
     serializer_class = LoginSerializer
     permission_classes = [AllowAny]
+    throttle_classes = [LoginEmailThrottle]
 
     def post(self, request, *args, **kwargs):
         serializer = self.get_serializer(data=request.data)

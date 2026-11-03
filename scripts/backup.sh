@@ -31,3 +31,17 @@ log "розмір: $(du -h "$db_file" | cut -f1) БД, $(du -h "$media_file" | c
 removed=$(find "$BACKUP_DIR" -maxdepth 1 \( -name 'db_*.sql.gz' -o -name 'media_*.tar.gz' \) \
   -mtime +"$KEEP_DAYS" -print -delete | wc -l)
 log "ротація: видалено $removed старших за $KEEP_DAYS дн."
+
+# Далі — лише для щоденного бекапу з cron; deploy.sh ставить BACKUP_OFFSITE=0,
+# щоб недоступний Storage Box не блокував деплой
+[ "${BACKUP_OFFSITE:-1}" = 1 ] || exit 0
+
+# Копія поза сервером (якщо налаштовано). Її збій не скасовує локальний бекап,
+# але скрипт завершиться з помилкою (видно в backup.log) і без пінгу нижче.
+bash "$(dirname "$0")/offsite_backup.sh"
+
+# Пінг моніторингу (напр. healthchecks.io) — лише після повністю успішного
+# бекапу: про пропущений чи зламаний сповістить сам сервіс моніторингу
+if [ -n "${BACKUP_PING_URL:-}" ]; then
+  curl -fsS -m 10 --retry 3 "$BACKUP_PING_URL" > /dev/null || log "пінг моніторингу не вдався"
+fi

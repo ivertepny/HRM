@@ -16,11 +16,14 @@ main() {
   git reset --hard origin/main
   # Ігноровані файли (.env) лишаються: -x не передаємо
   git clean -fd
-  echo "commit: $(git rev-parse --short HEAD)"
+  # docker-compose.server.yml передає його в api як SENTRY_RELEASE
+  export GIT_COMMIT_SHA
+  GIT_COMMIT_SHA="$(git rev-parse HEAD)"
+  echo "commit: $GIT_COMMIT_SHA"
 
   echo "=== бекап перед деплоєм ==="
   if docker ps --format '{{.Names}}' | grep -qx hrm-db; then
-    bash scripts/backup.sh
+    BACKUP_OFFSITE=0 bash scripts/backup.sh
   else
     echo "hrm-db не запущено (перший деплой?) — пропускаю"
   fi

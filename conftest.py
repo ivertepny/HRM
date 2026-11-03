@@ -84,3 +84,27 @@ def grant(catalog):
         )
 
     return _grant
+
+
+@pytest.fixture
+def throttle_rates(settings):
+    """Малі ставки лімітів (у тестах за замовчуванням вони дуже великі)."""
+    settings.REST_FRAMEWORK = {
+        **settings.REST_FRAMEWORK,
+        "DEFAULT_THROTTLE_RATES": {
+            "user": "3/min",
+            "login": "2/hour",
+            "ai_chat": "1/min",
+            "ai_chat_daily": "5/day",
+        },
+    }
+    # SimpleRateThrottle читає ставки з api_settings при імпорті класу
+    from rest_framework.throttling import SimpleRateThrottle
+
+    original = SimpleRateThrottle.THROTTLE_RATES
+    SimpleRateThrottle.THROTTLE_RATES = settings.REST_FRAMEWORK[
+        "DEFAULT_THROTTLE_RATES"
+    ]
+    cache.clear()
+    yield
+    SimpleRateThrottle.THROTTLE_RATES = original

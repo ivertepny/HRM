@@ -5,6 +5,8 @@
 (у DEBUG — з traceback).
 """
 
+import math
+
 from django.core.exceptions import ValidationError as DjangoValidationError
 from django.db import IntegrityError
 from django.db.models import ProtectedError, RestrictedError
@@ -29,7 +31,23 @@ def exception_handler(exc, context):
             {"detail": "Конфлікт даних: порушено обмеження цілісності."},
             status=status.HTTP_409_CONFLICT,
         )
+    elif isinstance(exc, exceptions.Throttled):
+        # У DRF переклад неповний («… Expected available in N seconds.»)
+        # Без wait у конструкторі (він дописав би англійський хвіст); wait потрібен
+        # обробнику DRF для заголовка Retry-After
+        wait = exc.wait
+        exc = exceptions.Throttled(detail=throttled_message(wait))
+        exc.wait = wait
     return drf_exception_handler(exc, context)
+
+
+def throttled_message(wait):
+    if wait is None:
+        return "Забагато запитів. Спробуйте пізніше."
+    minutes = math.ceil(wait / 60)
+    if minutes <= 1:
+        return "Забагато запитів. Спробуйте за хвилину."
+    return f"Забагато запитів. Спробуйте за {minutes} хв."
 
 
 class ServiceUnavailable(exceptions.APIException):

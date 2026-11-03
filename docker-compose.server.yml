@@ -65,6 +65,8 @@ services:
       POSTGRES_HOST: db
       POSTGRES_PORT: "5432"
       REDIS_URL: redis://redis:6379/0
+      # Помилки в Sentry прив'язані до коміту, який розгорнув deploy.sh
+      SENTRY_RELEASE: ${GIT_COMMIT_SHA:-unknown}
     volumes:
       - media:/usr/src/media
     networks: [hrm]

@@ -8,6 +8,11 @@ from rest_framework.views import APIView
 
 from apps.access.permissions import HasPermission
 from apps.access.services import get_access
+from apps.core.throttling import (
+    AIChatDailyThrottle,
+    AIChatThrottle,
+    AuthenticatedUserThrottle,
+)
 
 from .models import AIQuery, ChatSession
 from .serializers import (
@@ -24,6 +29,7 @@ AI_PERMISSIONS = {"*": "ai:use"}
 class ChatAPIView(APIView):
     permission_classes = [HasPermission]
     required_permissions = AI_PERMISSIONS
+    throttle_classes = [AuthenticatedUserThrottle, AIChatThrottle, AIChatDailyThrottle]
 
     @extend_schema(
         request=ChatRequestSerializer,

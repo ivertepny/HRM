@@ -24,6 +24,7 @@ dependencies = [
     "openai>=1.77",
     "redis[hiredis]>=5.2",
     "psycopg[binary]>=3.2",
+    "sentry-sdk>=2.20",
 ]
 
 [dependency-groups]

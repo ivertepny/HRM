@@ -342,3 +342,17 @@ def test_ai_requires_ai_use(client_as, user, grant, llm, method, url):
 
     assert denied.status_code == 403
     assert allowed.status_code == 200
+
+
+# --- ліміти --------------------------------------------------------------------
+
+
+def test_chat_is_rate_limited_per_user(client_as, user, grant, llm, throttle_rates):
+    grant(user, "ai:use")
+    client = client_as(user)
+
+    assert ask(client, "Привіт").status_code == 200
+    response = ask(client, "Ще раз")
+
+    assert response.status_code == 429
+    assert len(llm.calls) == 1  # модель удруге не викликалась

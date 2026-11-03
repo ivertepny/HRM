@@ -92,16 +92,22 @@
 - [x] Бекапи БД і файлів (перед кожним деплоєм і щодня), `restore.sh`; `docs/deploy.md`
 - [ ] Налаштувати сервер за `docs/deploy.md` і ввімкнути `DEPLOY_ENABLED=true`
 
-## Крок 8 — Продакшн
+## ✅ Крок 8 — Продакшн
 
 - [ ] gunicorn, Nginx, HTTPS (Let's Encrypt), `SECURE_SSL_REDIRECT`, HSTS, `collectstatic` — gunicorn, nginx стеку і HSTS ✅ (крок 7); HTTPS — certbot на nginx хоста при налаштуванні сервера; `SECURE_SSL_REDIRECT` і `collectstatic` не потрібні: редирект робить nginx хоста, Django назовні статику не віддає
 - [x] S3: приватний бакет + IAM-роль сервера (`GetObject` / `PutObject` / `DeleteObject` на `employees/*`) → не потрібно: файли у Docker volume на Hetzner (крок 7)
 - [x] Redis-кеш дозволів між запитами
 - [x] Довгий випадковий `SECRET_KEY` (шаблон `.env.production.example`; `check --deploy` без попереджень — у тестах)
-- [ ] Копія бекапів поза сервером (Hetzner Storage Box: `rsync` / `borg`)
-- [ ] Підняти HSTS до 31536000, коли HTTPS кілька днів працює (`nginx.conf` і `.env`)
+- [x] Копія бекапів поза сервером (Hetzner Storage Box: `rsync` / `borg`) → restic у Docker (`scripts/offsite_backup.sh`): шифрування, дедуплікація, ротація 14/8/12, щоденний `check`; випадкове стирання на сервері не дзеркалиться (без `rsync --delete`), від зловмисника з доступом до сервера — snapshots Storage Box
+- [x] Пінг моніторингу після успішного бекапу (`BACKUP_PING_URL`, напр. healthchecks.io)
+- [x] Ліміти в Django: вхід — на email (10/год), AI-асистент — на користувача (10/хв, 200/день), загальний — 600/хв на користувача; українське повідомлення 429
+- [x] Sentry (за `SENTRY_DSN`): без тіл запитів, локальних змінних і даних користувачів; release = git SHA
+- [x] Постійні з'єднання з БД (`CONN_MAX_AGE`, `CONN_HEALTH_CHECKS`)
+- [x] Заголовки безпеки фронту: CSP, `X-Frame-Options`, `Referrer-Policy`, `Permissions-Policy`
+- [ ] На сервері: Storage Box з SSH і snapshots, `restic.env`, `offsite_backup.sh init` (див. `docs/deploy.md`)
+- [ ] Підняти HSTS до 31536000, коли HTTPS кілька днів працює (`nginx.conf` і `.env`) — після запуску
 
-## Крок 9 — Документація
+## ⏭ Крок 9 — Документація
 
 - [ ] Переписати `README.md` (зараз — чужий шаблон)
 - [ ] Оновити `docs/summary.md`

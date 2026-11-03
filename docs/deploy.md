@@ -32,6 +32,7 @@ push у `main` → CI → GitHub Actions по SSH запускає `deploy.sh` �
 | `deploy.sh` | git reset → бекап → `docker compose up -d --build --wait` |
 | `scripts/backup.sh` | дамп БД + архів файлів у `/www/hrm-backups`, ротація 14 днів |
 | `scripts/restore.sh` | відновлення з бекапу (руйнівно, з підтвердженням) |
+| `scripts/offsite_backup.sh` | копія бекапів поза сервером (restic → Hetzner Storage Box) |
 | `scripts/setup_backup_cron.sh` | щоденний бекап о 03:00 |
 | `.github/workflows/ci.yml` | перевірки на кожен PR і push |
 | `.github/workflows/deploy.yml` | push у `main`: CI, потім деплой |
@@ -151,7 +152,20 @@ command="bash /www/hrm/deploy.sh",no-port-forwarding,no-X11-forwarding,no-agent-
   розділі «Адміністрування» застосунку.
 - **Моніторинг:** `GET https://hrm.example.com/api/health` перевіряє весь
   ланцюжок: nginx → Next → Django → БД і Redis. Відповідь `{"status":"ok"}`
-  або 503.
+  або 503. Додайте його в будь-який uptime-монітор, наприклад UptimeRobot
+  або Hetzner.
+- **Помилки:** з `SENTRY_DSN` у `.env` помилки 500 йдуть у Sentry з git SHA
+  деплою. Персональних даних там немає: ні тіл запитів, ні локальних змінних,
+  ні email чи IP (`apps/core/sentry.py`). Лише тип помилки, стек, URL і метод.
+- **Ліміти:**
+  - nginx стеку: 10 запитів/с з одного IP, вхід — 10/хв з IP;
+  - Django: 10 спроб входу на годину на один email, 600 запитів/хв на
+    користувача, AI-асистент — 10/хв і 200/день на користувача;
+  - змінюються через `LOGIN_RATE`, `AI_CHAT_RATE`, `AI_CHAT_DAILY_RATE` у
+    `.env`.
+- **HSTS:** коли HTTPS кілька днів працює без проблем, підніміть `max-age` до
+  `31536000` у `nginx/nginx.conf` (через коміт) і `SECURE_HSTS_SECONDS` у
+  `.env`.
 
 ## Відкат
 
@@ -172,6 +186,68 @@ command="bash /www/hrm/deploy.sh",no-port-forwarding,no-X11-forwarding,no-agent-
 - **Відновлення:**
   `bash scripts/restore.sh /www/hrm-backups/db_….sql.gz [/www/hrm-backups/media_….tar.gz]`.
   Скрипт зупиняє застосунок, замінює базу (і файли) та піднімає стек знову.
-- **Обмеження:** бекапи лежать на тому самому сервері, тож від втрати VPS
-  вони не врятують. Наступний крок — копія поза сервером (Hetzner Storage
-  Box через `rsync`/`borg`), див. `docs/plan.md`.
+- **Обмеження локальних бекапів:** вони лежать на тому самому сервері, тож
+  від втрати VPS не врятують. Для цього потрібна копія поза сервером, див.
+  нижче.
+
+### Копія поза сервером (Hetzner Storage Box)
+
+Після кожного щоденного бекапу `scripts/offsite_backup.sh` надсилає
+`/www/hrm-backups` у Storage Box через restic. Restic працює в Docker, тож на
+хості нічого ставити не треба.
+
+- **Шифрування:** restic шифрує дані до відправки, Hetzner бачить лише
+  шифротекст.
+- **Дедуплікація:** однакові дані зберігаються один раз, тож щоденний архів
+  файлів не множить обсяг.
+- **Ротація:** 14 щоденних, 8 тижневих, 12 місячних копій.
+- **Перевірка:** щодня `restic check`; у неділю ще читається 10 % даних.
+- **Захист від видалення:** стерті на сервері файли з копії не зникають, бо
+  це не `rsync --delete`. Але ключ сервера дає повний доступ до репозиторію:
+  хто захопить сервер, зможе видалити й копію. Від цього захищають лише
+  snapshots Storage Box (крок 1).
+
+Перед деплоєм бекап лишається лише локальним: якщо Storage Box недоступний,
+деплой від цього не зламається.
+
+1. **Hetzner Console:** замовте Storage Box (BX11 вистачає з запасом). У його
+   налаштуваннях увімкніть **SSH support** і **автоматичні snapshots**.
+   Snapshots робить сам Hetzner, і сервер їх видалити не може. Тому вони
+   рятують навіть тоді, коли зловмисник із ключем видалив репозиторій.
+2. **Ключ і `known_hosts`** (на сервері, `u123456` — ваш логін Storage Box):
+
+   ```bash
+   sudo mkdir -p /www/hrm-restic && sudo chown deploy:deploy /www/hrm-restic
+   chmod 700 /www/hrm-restic && cd /www/hrm-restic
+   ssh-keygen -t ed25519 -N "" -C hrm-restic -f id_ed25519
+   cat id_ed25519.pub | ssh -p 23 u123456@u123456.your-storagebox.de install-ssh-key
+   ssh-keyscan -p 23 -t ed25519 u123456.your-storagebox.de > known_hosts
+   ```
+
+3. **`/www/hrm-restic/restic.env`**, `chmod 600`:
+
+   ```bash
+   RESTIC_REPOSITORY=sftp:u123456@u123456.your-storagebox.de:hrm
+   RESTIC_PASSWORD=          # python3 -c "import secrets; print(secrets.token_urlsafe(32))"
+   SFTP_COMMAND="ssh -p 23 -i /restic/id_ed25519 -o UserKnownHostsFile=/restic/known_hosts -o BatchMode=yes u123456@u123456.your-storagebox.de -s sftp"
+   ```
+
+   **`RESTIC_PASSWORD` збережіть ще й у менеджері паролів.** Без нього
+   відновити копію неможливо. Якщо загине сервер, загине й `restic.env`.
+4. **Один раз:** `bash scripts/offsite_backup.sh init`, потім
+   `bash scripts/backup.sh` і перевірка
+   `bash scripts/offsite_backup.sh snapshots`.
+5. **Сповіщення, якщо бекап не відбувся:** створіть check на healthchecks.io
+   (період 1 день, grace 2 години). Потім перевстановіть cron з його URL:
+   `BACKUP_PING_URL=https://hc-ping.com/<uuid> bash scripts/setup_backup_cron.sh`.
+   Пінг іде лише після повністю успішного бекапу, тож про зламаний бекап
+   сповістить сам сервіс.
+
+**Відновлення з копії** (наприклад, на новому сервері, після кроків 1–3
+вище і копіювання `/www/hrm-restic`):
+
+```bash
+RESTORE_DIR=/tmp/hrm-restore bash scripts/offsite_backup.sh snapshots
+RESTORE_DIR=/tmp/hrm-restore bash scripts/offsite_backup.sh restore latest --target /restore
+bash scripts/restore.sh /tmp/hrm-restore/backups/db_….sql.gz /tmp/hrm-restore/backups/media_….tar.gz
+```

@@ -8,8 +8,10 @@ import os
 
 from django.core.exceptions import ImproperlyConfigured
 
+from apps.core.sentry import configure_sentry
+
 from .base import *  # noqa: F403
-from .base import env
+from .base import DATABASES, env
 
 DEBUG = False
 # Ім'я сервісу в compose ("api"): домен до Django не доходить
@@ -32,6 +34,19 @@ SILENCED_SYSTEM_CHECKS = [
     # HSTS preload — фактично незворотне рішення для домену; не за замовчуванням
     "security.W021",
 ]
+
+# Постійні з'єднання з БД: без нового TCP + автентифікації на кожен запит.
+# Health check перевіряє з'єднання перед повторним використанням.
+DATABASES["default"]["CONN_MAX_AGE"] = env.int("CONN_MAX_AGE", default=60)
+DATABASES["default"]["CONN_HEALTH_CHECKS"] = True
+
+# Помилки — у Sentry, якщо задано SENTRY_DSN (без персональних даних, див.
+# apps/core/sentry.py). Release — git SHA, який розгорнув deploy.sh.
+configure_sentry(
+    env("SENTRY_DSN", default=""),
+    environment=env("SENTRY_ENVIRONMENT", default="production"),
+    release=env("SENTRY_RELEASE", default=""),
+)
 
 # Файли працівників — FileSystemStorage з base.py, у volume `media`.
 # Віддає їх MediaView з перевіркою доступу (через Next, не напряму).

@@ -175,6 +175,15 @@ REST_FRAMEWORK = {
     "DEFAULT_FILTER_BACKENDS": ["django_filters.rest_framework.DjangoFilterBackend"],
     "DEFAULT_PAGINATION_CLASS": "apps.core.pagination.DefaultPagination",
     "EXCEPTION_HANDLER": "apps.core.exceptions.exception_handler",
+    # Ліміти (apps/core/throttling.py); за адресою клієнта обмежує nginx
+    "DEFAULT_THROTTLE_CLASSES": ["apps.core.throttling.AuthenticatedUserThrottle"],
+    "DEFAULT_THROTTLE_RATES": {
+        "user": "600/min",  # з запасом для пошуку під час набору і дашбордів
+        # На один email; вдалі спроби теж рахуються
+        "login": env("LOGIN_RATE", default="10/hour"),
+        "ai_chat": env("AI_CHAT_RATE", default="10/min"),
+        "ai_chat_daily": env("AI_CHAT_DAILY_RATE", default="200/day"),
+    },
 }
 
 SPECTACULAR_SETTINGS = {

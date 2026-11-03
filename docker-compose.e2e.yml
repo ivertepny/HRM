@@ -39,6 +39,8 @@ services:
       # Без Redis (кеш у пам'яті) і без OpenAI (асистент відповідає 503)
       - REDIS_URL=
       - OPENAI_API_KEY=
+      # Тести логіняться під тими самими користувачами десятки разів
+      - LOGIN_RATE=1000/hour
     command: >
       sh -c "python manage.py migrate --noinput &&
              python manage.py seed_demo --password Demo-pass-2026 &&

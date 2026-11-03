@@ -135,3 +135,29 @@ def test_prod_settings_pass_deploy_check():
         check=False,
     )
     assert result.returncode == 0, result.stdout + result.stderr
+
+
+# --- sentry ----------------------------------------------------------------------
+
+
+def test_sentry_disabled_without_dsn(monkeypatch):
+    from apps.core import sentry
+
+    calls = []
+    monkeypatch.setattr(sentry.sentry_sdk, "init", lambda **kw: calls.append(kw))
+    assert sentry.configure_sentry("") is False
+    assert calls == []
+
+
+def test_sentry_never_sends_personal_data(monkeypatch):
+    from apps.core import sentry
+
+    calls = []
+    monkeypatch.setattr(sentry.sentry_sdk, "init", lambda **kw: calls.append(kw))
+    assert sentry.configure_sentry("https://k@o.ingest.sentry.io/1", release="abc")
+
+    options = calls[0]
+    assert options["send_default_pii"] is False
+    assert options["max_request_body_size"] == "never"
+    assert options["include_local_variables"] is False
+    assert options["release"] == "abc"
