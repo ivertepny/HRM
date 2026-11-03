@@ -493,3 +493,41 @@ export function useAttendanceReport(month: string, unit?: number) {
     placeholderData: (previous) => previous,
   });
 }
+
+// --- святкові дні --------------------------------------------------------------
+
+type HolidayQuery = NonNullable<
+  import("./api/schema").operations["attendance_holidays_list"]["parameters"]["query"]
+>;
+
+export function useHolidays(query: HolidayQuery, enabled = true) {
+  return useQuery({
+    queryKey: ["holidays", query],
+    queryFn: () => unwrap(api.GET("/api/attendance/holidays/", { params: { query } })),
+    enabled,
+  });
+}
+
+/** Свята змінюють робочі дні — оновлюємо й звіти табеля. */
+function invalidateHolidays(client: ReturnType<typeof useQueryClient>) {
+  client.invalidateQueries({ queryKey: ["holidays"] });
+  client.invalidateQueries({ queryKey: ["attendance", "report"] });
+}
+
+export function useCreateHoliday() {
+  const client = useQueryClient();
+  return useMutation({
+    mutationFn: (body: Schemas["HolidayRequest"]) =>
+      unwrap(api.POST("/api/attendance/holidays/", { body })),
+    onSuccess: () => invalidateHolidays(client),
+  });
+}
+
+export function useDeleteHoliday() {
+  const client = useQueryClient();
+  return useMutation({
+    mutationFn: (id: number) =>
+      unwrap(api.DELETE("/api/attendance/holidays/{id}/", { params: { path: { id } } })),
+    onSuccess: () => invalidateHolidays(client),
+  });
+}

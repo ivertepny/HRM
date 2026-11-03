@@ -47,6 +47,7 @@ Backend.
 | | `manage` | облік, видача, повернення, списання |
 | `attendance` | `read` | бачити чужий табель і місячний звіт |
 | | `write` | відмічати власну присутність |
+| | `manage` | вести календар святкових (неробочих) днів; лише на всю компанію |
 | `ai` | `use` | користуватися AI-асистентом |
 
 **Шаблони замість переліку:**
@@ -63,7 +64,7 @@ Backend.
 | Роль | Склад | Для кого |
 |------|-------|----------|
 | **Employee** | `employees:read`, `company:read`, `vacations:write`, `attendance:write`, `ai:use` | кожен працівник; видається автоматично при створенні облікового запису |
-| **HR Manager** | `employees:*`, `salary:*`, `documents:*`, `users:read`, `company:read`, `vacations:*`, `equipment:*`, `attendance:read`, `ai:use` | кадровики |
+| **HR Manager** | `employees:*`, `salary:*`, `documents:*`, `users:read`, `company:read`, `vacations:*`, `equipment:*`, `attendance:read`, `attendance:manage`, `ai:use` | кадровики |
 | **System Admin** | `*:*` | адміністратори системи |
 
 Чому в Employee немає `salary:read`: свою зарплату працівник і так бачить, а

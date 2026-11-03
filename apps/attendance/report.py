@@ -1,6 +1,6 @@
 """Місячний звіт табеля: по працівнику — дні за статусами, відпустка, пропуски, години.
 
-Робочі дні — понеділок…п'ятниця (державні свята не враховуються).
+Робочі дні — понеділок…п'ятниця, крім святкових днів компанії (Holiday).
 """
 
 import calendar
@@ -12,7 +12,7 @@ from django.utils import timezone
 
 from apps.vacations.models import VacationRequest
 
-from .models import AttendanceRecord
+from .models import AttendanceRecord, Holiday
 
 
 def parse_month(value):
@@ -27,10 +27,11 @@ def month_bounds(first):
     return first, first.replace(day=last_day)
 
 
-def weekdays(start, end):
+def weekdays(start, end, holidays=frozenset()):
+    """Робочі дні періоду: пн–пт, крім святкових."""
     day = start
     while day <= end:
-        if day.weekday() < 5:
+        if day.weekday() < 5 and day not in holidays:
             yield day
         day += datetime.timedelta(days=1)
 
@@ -47,6 +48,8 @@ def build_report(employees, first, today=None):
     first, last = month_bounds(first)
     employees = list(employees.select_related("user", "structural_unit"))
     ids = [e.pk for e in employees]
+    month_holidays = list(Holiday.objects.filter(date__range=(first, last)))
+    holidays = frozenset(h.date for h in month_holidays)
 
     records = defaultdict(list)
     for record in AttendanceRecord.objects.filter(
@@ -62,7 +65,7 @@ def build_report(employees, first, today=None):
         date_end__gte=first,
     ):
         start, end = max(vacation.date_start, first), min(vacation.date_end, last)
-        vacation_days[vacation.employee_id].update(weekdays(start, end))
+        vacation_days[vacation.employee_id].update(weekdays(start, end, holidays))
 
     rows = []
     for employee in employees:
@@ -74,7 +77,7 @@ def build_report(employees, first, today=None):
         span_end = min(last, today, employee.date_fired or last)
         missing = sum(
             1
-            for day in weekdays(span_start, span_end)
+            for day in weekdays(span_start, span_end, holidays)
             if day not in marked and day not in on_vacation
         )
         by_status = defaultdict(int)
@@ -95,6 +98,7 @@ def build_report(employees, first, today=None):
 
     return {
         "month": first.strftime("%Y-%m"),
-        "working_days": sum(1 for _ in weekdays(first, last)),
+        "working_days": sum(1 for _ in weekdays(first, last, holidays)),
+        "holidays": month_holidays,
         "rows": rows,
     }

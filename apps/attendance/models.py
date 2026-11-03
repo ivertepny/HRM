@@ -87,3 +87,21 @@ class AttendanceRecord(models.Model):
             raise ValidationError({"time_start": "Вкажіть час початку."})
         if self.time_start and self.time_end and self.time_end <= self.time_start:
             raise ValidationError({"time_end": "Кінець має бути пізніше за початок."})
+
+
+class Holiday(models.Model):
+    """Неробочий день компанії: не рахується робочим у табелі.
+
+    Календар веде HR, а не код: в Україні під час воєнного стану державні
+    свята — робочі дні, після нього — знову вихідні; компанія може мати й свої.
+    """
+
+    date = models.DateField(unique=True)
+    name = models.CharField(max_length=200)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["date"]
+
+    def __str__(self):
+        return f"{self.date:%d.%m.%Y} — {self.name}"

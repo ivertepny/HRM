@@ -5,10 +5,11 @@ import { useState } from "react";
 import { MonthSwitcher } from "@/components/app/month-switcher";
 import { NativeSelect } from "@/components/app/native-select";
 import { PageHeader } from "@/components/app/section";
+import { buttonVariants } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Skeleton } from "@/components/ui/skeleton";
 import { canAnywhere } from "@/lib/access";
-import { formatHours, monthOf } from "@/lib/attendance";
+import { dayLabel, formatHours, monthOf } from "@/lib/attendance";
 import { unitPath } from "@/lib/employees";
 import { useAttendanceReport, useMyAccess, useUnits } from "@/lib/queries";
 import { todayISO } from "@/lib/vacations";
@@ -20,6 +21,13 @@ const COLUMNS = [
   ["vacation", "Відпустка"],
   ["missing", "Без відмітки"],
 ] as const;
+
+/** Той самий звіт файлом для Excel (той самий місяць і підрозділ). */
+function csvHref(month: string, unit: string) {
+  const query = new URLSearchParams({ month });
+  if (unit) query.set("unit", unit);
+  return `/api/backend/api/attendance/records/report/csv/?${query}`;
+}
 
 export function TeamReport() {
   const access = useMyAccess();
@@ -42,12 +50,35 @@ export function TeamReport() {
   return (
     <div className="grid gap-8">
       <PageHeader title="Табель команди">
-        {report.data &&
-          `Робочих днів у місяці: ${report.data.working_days}. Пропуски рахуються до сьогодні, без днів відпустки.`}
+        {report.data && (
+          <>
+            Робочих днів у місяці: {report.data.working_days}
+            {report.data.holidays.length > 0 && " (без святкових)"}. Пропуски рахуються до сьогодні,
+            без днів відпустки і свят.
+            {report.data.holidays.length > 0 && (
+              <span className="mt-1 block text-base">
+                Свята:{" "}
+                {report.data.holidays
+                  .map((holiday) => `${dayLabel(holiday.date)} — ${holiday.name}`)
+                  .join("; ")}
+              </span>
+            )}
+          </>
+        )}
       </PageHeader>
 
       <div className="flex flex-wrap items-end justify-between gap-4 border-t border-border pt-6">
-        <MonthSwitcher month={month} max={thisMonth} onChange={setMonth} />
+        <div className="flex flex-wrap items-center gap-3">
+          <MonthSwitcher month={month} max={thisMonth} onChange={setMonth} />
+          {/* Звичайне посилання: файл віддає BFF з Content-Disposition */}
+          <a
+            href={csvHref(month, unit)}
+            download
+            className={buttonVariants({ variant: "outline" })}
+          >
+            Завантажити CSV
+          </a>
+        </div>
         {units.data && (
           <div className="grid w-full gap-2 sm:w-80">
             <Label htmlFor="report-unit">Підрозділ</Label>

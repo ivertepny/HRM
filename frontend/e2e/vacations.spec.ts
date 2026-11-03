@@ -16,8 +16,13 @@ test("працівник подає і скасовує заявку", async ({ 
 
   await submitVacation(page, inDays(offset), inDays(offset + 2));
 
-  const row = page.getByRole("row").filter({ hasText: "На розгляді" }).first();
-  await expect(row).toContainText("3 дні");
+  // Саме своя заявка (3 дні): на стенді лишаються заявки попередніх прогонів
+  const row = page
+    .getByRole("row")
+    .filter({ hasText: "На розгляді" })
+    .filter({ hasText: "3 дні" })
+    .first();
+  await expect(row).toBeVisible();
   await row.getByRole("button", { name: "Скасувати заявку" }).click();
   await expect(page.getByText("Заявку скасовано")).toBeVisible();
 });
@@ -32,6 +37,16 @@ test("перетин дат показує помилку біля форми", 
   await page.getByRole("button", { name: "Подати заявку" }).click();
 
   await expect(page.getByRole("alert").filter({ hasText: /\S/ })).toContainText("Перетин");
+
+  // Прибираємо за собою: незакрита заявка заважала б повторним прогонам
+  await page
+    .getByRole("row")
+    .filter({ hasText: "На розгляді" })
+    .filter({ hasText: "5 днів" })
+    .first()
+    .getByRole("button", { name: "Скасувати заявку" })
+    .click();
+  await expect(page.getByText("Заявку скасовано")).toBeVisible();
 });
 
 test("HR схвалює заявку працівника", async ({ page }) => {

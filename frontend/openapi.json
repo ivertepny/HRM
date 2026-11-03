@@ -824,6 +824,224 @@
                 }
             }
         },
+        "/api/attendance/holidays/": {
+            "get": {
+                "operationId": "attendance_holidays_list",
+                "description": "Бачать усі з входом; змінювати — attendance:manage.",
+                "summary": "Святкові (неробочі) дні",
+                "parameters": [
+                    {
+                        "in": "query",
+                        "name": "date_from",
+                        "schema": {
+                            "type": "string",
+                            "format": "date"
+                        }
+                    },
+                    {
+                        "in": "query",
+                        "name": "date_to",
+                        "schema": {
+                            "type": "string",
+                            "format": "date"
+                        }
+                    },
+                    {
+                        "in": "query",
+                        "name": "year",
+                        "schema": {
+                            "type": "number"
+                        }
+                    }
+                ],
+                "tags": [
+                    "Attendance"
+                ],
+                "security": [
+                    {
+                        "jwtAuth": []
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "array",
+                                    "items": {
+                                        "$ref": "#/components/schemas/Holiday"
+                                    }
+                                }
+                            }
+                        },
+                        "description": ""
+                    }
+                }
+            },
+            "post": {
+                "operationId": "attendance_holidays_create",
+                "description": "Календар неробочих днів компанії — його веде HR (див. Holiday).",
+                "tags": [
+                    "Attendance"
+                ],
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/HolidayRequest"
+                            }
+                        },
+                        "application/x-www-form-urlencoded": {
+                            "schema": {
+                                "$ref": "#/components/schemas/HolidayRequest"
+                            }
+                        },
+                        "multipart/form-data": {
+                            "schema": {
+                                "$ref": "#/components/schemas/HolidayRequest"
+                            }
+                        }
+                    },
+                    "required": true
+                },
+                "security": [
+                    {
+                        "jwtAuth": []
+                    }
+                ],
+                "responses": {
+                    "201": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Holiday"
+                                }
+                            }
+                        },
+                        "description": ""
+                    }
+                }
+            }
+        },
+        "/api/attendance/holidays/{id}/": {
+            "get": {
+                "operationId": "attendance_holidays_retrieve",
+                "description": "Календар неробочих днів компанії — його веде HR (див. Holiday).",
+                "parameters": [
+                    {
+                        "in": "path",
+                        "name": "id",
+                        "schema": {
+                            "type": "integer"
+                        },
+                        "description": "A unique integer value identifying this holiday.",
+                        "required": true
+                    }
+                ],
+                "tags": [
+                    "Attendance"
+                ],
+                "security": [
+                    {
+                        "jwtAuth": []
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Holiday"
+                                }
+                            }
+                        },
+                        "description": ""
+                    }
+                }
+            },
+            "patch": {
+                "operationId": "attendance_holidays_partial_update",
+                "description": "Календар неробочих днів компанії — його веде HR (див. Holiday).",
+                "parameters": [
+                    {
+                        "in": "path",
+                        "name": "id",
+                        "schema": {
+                            "type": "integer"
+                        },
+                        "description": "A unique integer value identifying this holiday.",
+                        "required": true
+                    }
+                ],
+                "tags": [
+                    "Attendance"
+                ],
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/PatchedHolidayRequest"
+                            }
+                        },
+                        "application/x-www-form-urlencoded": {
+                            "schema": {
+                                "$ref": "#/components/schemas/PatchedHolidayRequest"
+                            }
+                        },
+                        "multipart/form-data": {
+                            "schema": {
+                                "$ref": "#/components/schemas/PatchedHolidayRequest"
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "jwtAuth": []
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Holiday"
+                                }
+                            }
+                        },
+                        "description": ""
+                    }
+                }
+            },
+            "delete": {
+                "operationId": "attendance_holidays_destroy",
+                "description": "Календар неробочих днів компанії — його веде HR (див. Holiday).",
+                "parameters": [
+                    {
+                        "in": "path",
+                        "name": "id",
+                        "schema": {
+                            "type": "integer"
+                        },
+                        "description": "A unique integer value identifying this holiday.",
+                        "required": true
+                    }
+                ],
+                "tags": [
+                    "Attendance"
+                ],
+                "security": [
+                    {
+                        "jwtAuth": []
+                    }
+                ],
+                "responses": {
+                    "204": {
+                        "description": "No response body"
+                    }
+                }
+            }
+        },
         "/api/attendance/records/": {
             "get": {
                 "operationId": "attendance_records_list",
@@ -1074,7 +1292,7 @@
         "/api/attendance/records/report/": {
             "get": {
                 "operationId": "attendance_records_report_retrieve",
-                "description": "Працівники в межах scope attendance:read: дні в офісі, віддалено, вихідні, відпустка, пропущені робочі дні, години.",
+                "description": "Працівники в межах scope attendance:read: дні в офісі, віддалено, вихідні, відпустка, пропущені робочі дні, години. Робочі дні — пн–пт без святкових (holidays).",
                 "summary": "Місячний звіт",
                 "parameters": [
                     {
@@ -1108,6 +1326,51 @@
                             "application/json": {
                                 "schema": {
                                     "$ref": "#/components/schemas/Report"
+                                }
+                            }
+                        },
+                        "description": ""
+                    }
+                }
+            }
+        },
+        "/api/attendance/records/report/csv/": {
+            "get": {
+                "operationId": "attendance_records_report_csv_retrieve",
+                "description": "Ті самі дані, що й report, — для Excel: UTF-8 з BOM, роздільник «;», десяткова кома.",
+                "summary": "Місячний звіт у CSV",
+                "parameters": [
+                    {
+                        "in": "query",
+                        "name": "month",
+                        "schema": {
+                            "type": "string"
+                        },
+                        "description": "YYYY-MM"
+                    },
+                    {
+                        "in": "query",
+                        "name": "unit",
+                        "schema": {
+                            "type": "integer"
+                        },
+                        "description": "Підрозділ разом з дочірніми"
+                    }
+                ],
+                "tags": [
+                    "Attendance"
+                ],
+                "security": [
+                    {
+                        "jwtAuth": []
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "content": {
+                            "text/csv": {
+                                "schema": {
+                                    "type": "string"
                                 }
                             }
                         },
@@ -4899,6 +5162,45 @@
                 "type": "string",
                 "description": "* `+` - Створено\n* `~` - Змінено\n* `-` - Видалено"
             },
+            "Holiday": {
+                "type": "object",
+                "properties": {
+                    "id": {
+                        "type": "integer",
+                        "readOnly": true
+                    },
+                    "date": {
+                        "type": "string",
+                        "format": "date"
+                    },
+                    "name": {
+                        "type": "string",
+                        "maxLength": 200
+                    }
+                },
+                "required": [
+                    "date",
+                    "name"
+                ]
+            },
+            "HolidayRequest": {
+                "type": "object",
+                "properties": {
+                    "date": {
+                        "type": "string",
+                        "format": "date"
+                    },
+                    "name": {
+                        "type": "string",
+                        "minLength": 1,
+                        "maxLength": 200
+                    }
+                },
+                "required": [
+                    "date",
+                    "name"
+                ]
+            },
             "LevelEnum": {
                 "enum": [
                     "trainee",
@@ -5553,6 +5855,20 @@
                     }
                 }
             },
+            "PatchedHolidayRequest": {
+                "type": "object",
+                "properties": {
+                    "date": {
+                        "type": "string",
+                        "format": "date"
+                    },
+                    "name": {
+                        "type": "string",
+                        "minLength": 1,
+                        "maxLength": 200
+                    }
+                }
+            },
             "PatchedPositionRequest": {
                 "type": "object",
                 "properties": {
@@ -5765,7 +6081,14 @@
                         "type": "string"
                     },
                     "working_days": {
-                        "type": "integer"
+                        "type": "integer",
+                        "description": "Пн–пт без святкових днів"
+                    },
+                    "holidays": {
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/components/schemas/Holiday"
+                        }
                     },
                     "rows": {
                         "type": "array",
@@ -5775,6 +6098,7 @@
                     }
                 },
                 "required": [
+                    "holidays",
                     "month",
                     "rows",
                     "working_days"

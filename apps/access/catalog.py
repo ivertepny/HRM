@@ -51,6 +51,7 @@ PERMISSION_CATALOG = {
     "attendance": {
         "read": "Перегляд табеля і місячного звіту",
         "write": "Відмітка власної присутності",
+        "manage": "Святкові (неробочі) дні в табелі",
     },
 }
 
@@ -73,6 +74,7 @@ SYSTEM_ROLES = {
             "equipment:read",
             "equipment:manage",
             "attendance:read",
+            "attendance:manage",
             "ai:use",
         ],
     },

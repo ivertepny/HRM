@@ -3,7 +3,7 @@ from rest_framework import serializers
 
 from apps.core.serializers import ModelCleanMixin
 
-from .models import AttendanceRecord
+from .models import AttendanceRecord, Holiday
 
 
 class EmployeeSummarySerializer(serializers.Serializer):
@@ -78,7 +78,14 @@ class ReportRowSerializer(serializers.Serializer):
     hours = serializers.FloatField()
 
 
+class HolidaySerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Holiday
+        fields = ["id", "date", "name"]
+
+
 class ReportSerializer(serializers.Serializer):
     month = serializers.CharField()
-    working_days = serializers.IntegerField()
+    working_days = serializers.IntegerField(help_text="Пн–пт без святкових днів")
+    holidays = HolidaySerializer(many=True)
     rows = ReportRowSerializer(many=True)

@@ -14,7 +14,7 @@ import {
   shortTime,
   STATUS_LABELS,
 } from "@/lib/attendance";
-import { useAttendance, useMe, useMyEmployee } from "@/lib/queries";
+import { useAttendance, useHolidays, useMe, useMyEmployee } from "@/lib/queries";
 import { todayISO } from "@/lib/vacations";
 
 import { DayForm } from "./day-form";
@@ -36,6 +36,9 @@ export function MyTimesheet() {
     { employee: employeeId, date_from: from, date_to: to },
     employeeId !== undefined,
   );
+  const holidays = useHolidays({ date_from: from, date_to: to });
+  // Окремо від місяця: обраний місяць може не бути поточним
+  const todayHoliday = useHolidays({ date_from: today, date_to: today }).data?.[0];
 
   if (me.isPending || employee.isPending) {
     return <Skeleton className="h-64 w-full max-w-2xl" />;
@@ -60,6 +63,12 @@ export function MyTimesheet() {
       </PageHeader>
 
       <Section title={current ? "Сьогодні — відмічено" : "Сьогодні"}>
+        {todayHoliday && (
+          <p role="status" className="mb-4 rounded-md bg-mist p-3 text-sm">
+            Сьогодні свято — «{todayHoliday.name}», неробочий день. Якщо все ж працюєте, відмітьтесь
+            як зазвичай.
+          </p>
+        )}
         {todayRecord.isPending ? (
           <Skeleton className="h-40 w-full" />
         ) : (
@@ -85,6 +94,15 @@ export function MyTimesheet() {
               </Button>
             )}
           </div>
+
+          {holidays.data && holidays.data.length > 0 && (
+            <p className="text-sm text-slate">
+              Неробочі дні:{" "}
+              {holidays.data
+                .map((holiday) => `${dayLabel(holiday.date)} — ${holiday.name}`)
+                .join("; ")}
+            </p>
+          )}
 
           {editing === "other" && (
             <div className="rounded-md bg-mist p-4">

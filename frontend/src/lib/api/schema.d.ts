@@ -211,6 +211,46 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/attendance/holidays/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Святкові (неробочі) дні
+         * @description Бачать усі з входом; змінювати — attendance:manage.
+         */
+        get: operations["attendance_holidays_list"];
+        put?: never;
+        /** @description Календар неробочих днів компанії — його веде HR (див. Holiday). */
+        post: operations["attendance_holidays_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/attendance/holidays/{id}/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** @description Календар неробочих днів компанії — його веде HR (див. Holiday). */
+        get: operations["attendance_holidays_retrieve"];
+        put?: never;
+        post?: never;
+        /** @description Календар неробочих днів компанії — його веде HR (див. Holiday). */
+        delete: operations["attendance_holidays_destroy"];
+        options?: never;
+        head?: never;
+        /** @description Календар неробочих днів компанії — його веде HR (див. Holiday). */
+        patch: operations["attendance_holidays_partial_update"];
+        trace?: never;
+    };
     "/api/attendance/records/": {
         parameters: {
             query?: never;
@@ -265,9 +305,29 @@ export interface paths {
         };
         /**
          * Місячний звіт
-         * @description Працівники в межах scope attendance:read: дні в офісі, віддалено, вихідні, відпустка, пропущені робочі дні, години.
+         * @description Працівники в межах scope attendance:read: дні в офісі, віддалено, вихідні, відпустка, пропущені робочі дні, години. Робочі дні — пн–пт без святкових (holidays).
          */
         get: operations["attendance_records_report_retrieve"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/attendance/records/report/csv/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Місячний звіт у CSV
+         * @description Ті самі дані, що й report, — для Excel: UTF-8 з BOM, роздільник «;», десяткова кома.
+         */
+        get: operations["attendance_records_report_csv_retrieve"];
         put?: never;
         post?: never;
         delete?: never;
@@ -1294,6 +1354,17 @@ export interface components {
          * @enum {string}
          */
         HistoryTypeEnum: "+" | "~" | "-";
+        Holiday: {
+            readonly id?: number;
+            /** Format: date */
+            date: string;
+            name: string;
+        };
+        HolidayRequest: {
+            /** Format: date */
+            date: string;
+            name: string;
+        };
         /**
          * @description * `trainee` - Trainee
          *     * `junior` - Junior
@@ -1580,6 +1651,11 @@ export interface components {
             serial_number?: string;
             description?: string;
         };
+        PatchedHolidayRequest: {
+            /** Format: date */
+            date?: string;
+            name?: string;
+        };
         PatchedPositionRequest: {
             name?: string;
         };
@@ -1641,7 +1717,9 @@ export interface components {
         };
         Report: {
             month: string;
+            /** @description Пн–пт без святкових днів */
             working_days: number;
+            holidays: components["schemas"]["Holiday"][];
             rows: components["schemas"]["ReportRow"][];
         };
         ReportRow: {
@@ -2334,6 +2412,125 @@ export interface operations {
             };
         };
     };
+    attendance_holidays_list: {
+        parameters: {
+            query?: {
+                date_from?: string;
+                date_to?: string;
+                year?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Holiday"][];
+                };
+            };
+        };
+    };
+    attendance_holidays_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["HolidayRequest"];
+                "application/x-www-form-urlencoded": components["schemas"]["HolidayRequest"];
+                "multipart/form-data": components["schemas"]["HolidayRequest"];
+            };
+        };
+        responses: {
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Holiday"];
+                };
+            };
+        };
+    };
+    attendance_holidays_retrieve: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description A unique integer value identifying this holiday. */
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Holiday"];
+                };
+            };
+        };
+    };
+    attendance_holidays_destroy: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description A unique integer value identifying this holiday. */
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description No response body */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    attendance_holidays_partial_update: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description A unique integer value identifying this holiday. */
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["PatchedHolidayRequest"];
+                "application/x-www-form-urlencoded": components["schemas"]["PatchedHolidayRequest"];
+                "multipart/form-data": components["schemas"]["PatchedHolidayRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Holiday"];
+                };
+            };
+        };
+    };
     attendance_records_list: {
         parameters: {
             query?: {
@@ -2483,6 +2680,30 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["Report"];
+                };
+            };
+        };
+    };
+    attendance_records_report_csv_retrieve: {
+        parameters: {
+            query?: {
+                /** @description YYYY-MM */
+                month?: string;
+                /** @description Підрозділ разом з дочірніми */
+                unit?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "text/csv": string;
                 };
             };
         };

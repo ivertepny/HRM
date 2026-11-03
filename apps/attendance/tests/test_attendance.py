@@ -5,7 +5,7 @@ from django.utils import timezone
 
 from apps.access.models import Role, UserRole
 from apps.access.services import grant_default_role
-from apps.attendance.models import AttendanceRecord
+from apps.attendance.models import AttendanceRecord, Holiday
 from apps.attendance.report import build_report
 from apps.company.tests.factories import StructuralUnitFactory
 from apps.employees.models import Employee
@@ -254,3 +254,102 @@ def test_report_hr_filters_by_unit(client_as, dev, seller, units, catalog):
 
 def test_report_rejects_bad_month(client_as, it_lead):
     assert client_as(it_lead.user).get(REPORT, {"month": "11/2026"}).status_code == 400
+
+
+# --- свята ---------------------------------------------------------------------
+
+HOLIDAYS = "/api/attendance/holidays/"
+
+
+def test_holidays_are_not_working_days(units, catalog):
+    employee = EmployeeFactory(structural_unit=units["it"], date_hired=None)
+    # Листопад 2026: 2-ге (пн) — свято; відпустка 2–3 — робочий з них лише 3-тє
+    Holiday.objects.create(date=datetime.date(2026, 11, 2), name="Тестове свято")
+    Holiday.objects.create(date=datetime.date(2026, 11, 7), name="Субота-свято")
+    VacationRequest.objects.create(
+        employee=employee,
+        date_start=datetime.date(2026, 11, 2),
+        date_end=datetime.date(2026, 11, 3),
+        status=VacationRequest.Status.APPROVED,
+    )
+
+    report = build_report(
+        Employee.objects.filter(pk=employee.pk),
+        datetime.date(2026, 11, 1),
+        today=datetime.date(2026, 11, 4),
+    )
+
+    assert report["working_days"] == 20  # 21 пн–пт мінус свято в понеділок
+    assert [h.name for h in report["holidays"]] == ["Тестове свято", "Субота-свято"]
+    row = report["rows"][0]
+    assert row["vacation"] == 1
+    assert row["missing"] == 1  # лише 4-те; 2-ге — свято, 3-тє — відпустка
+
+
+def test_report_api_lists_month_holidays(client_as, it_lead):
+    Holiday.objects.create(date=datetime.date(2026, 11, 2), name="Свято")
+    Holiday.objects.create(date=datetime.date(2026, 12, 25), name="Інший місяць")
+
+    body = client_as(it_lead.user).get(REPORT, {"month": "2026-11"}).json()
+
+    assert body["holidays"] == [
+        {"id": body["holidays"][0]["id"], "date": "2026-11-02", "name": "Свято"}
+    ]
+
+
+def test_everyone_reads_holidays_only_hr_changes_them(client_as, dev, catalog):
+    Holiday.objects.create(date=datetime.date(2026, 1, 1), name="Новий рік")
+    hr = EmployeeFactory()
+    UserRole.objects.create(user=hr.user, role=Role.objects.get(name="HR Manager"))
+
+    assert client_as(dev.user).get(HOLIDAYS, {"year": 2026}).json()[0]["name"] == (
+        "Новий рік"
+    )
+    payload = {"date": "2026-12-25", "name": "Різдво"}
+    assert client_as(dev.user).post(HOLIDAYS, payload).status_code == 403
+    assert client_as(hr.user).post(HOLIDAYS, payload).status_code == 201
+    assert client_as(hr.user).post(HOLIDAYS, payload).status_code == 400  # дубль дати
+
+
+def test_scoped_manage_cannot_change_company_holidays(client_as, units, grant):
+    lead = EmployeeFactory(structural_unit=units["it"])
+    grant(lead.user, "attendance:manage", unit=units["it"])
+
+    response = client_as(lead.user).post(
+        HOLIDAYS, {"date": "2026-12-25", "name": "Різдво"}
+    )
+    assert response.status_code == 403
+
+
+# --- CSV -----------------------------------------------------------------------
+
+CSV_URL = f"{REPORT}csv/"
+
+
+def test_report_csv_for_excel(client_as, it_lead, dev):
+    # Ім'я в CSV — «Прізвище Ім'я», тож формула — у прізвищі
+    dev.user.last_name, dev.user.first_name = "=HYPERLINK(1)", "Хакер"
+    dev.user.save()
+    record(dev, time_start=datetime.time(9), time_end=datetime.time(17, 30))
+
+    response = client_as(it_lead.user).get(CSV_URL)
+
+    assert response.status_code == 200
+    assert response["Content-Type"] == "text/csv; charset=utf-8"
+    month = timezone.localdate().strftime("%Y-%m")
+    assert f'filename="tabel-{month}.csv"' in response["Content-Disposition"]
+    text = response.content.decode("utf-8")
+    assert text.startswith("\ufeff")  # BOM — Excel відкриє кирилицю правильно
+    lines = text.lstrip("\ufeff").splitlines()
+    assert lines[0] == (
+        "Працівник;Email;Підрозділ;Офіс;Віддалено;Не працював;Відпустка;"
+        "Без відмітки;Години"
+    )
+    dev_line = next(line for line in lines if dev.user.email in line)
+    assert dev_line.startswith("'")  # формула не виконається в Excel
+    assert dev_line.endswith(";8,5")  # десяткова кома
+    assert len(lines) == 3  # заголовок + dev + it_lead
+
+
+def test_report_csv_requires_permission(client_as, dev):
+    assert client_as(dev.user).get(CSV_URL).status_code == 403

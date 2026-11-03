@@ -38,6 +38,7 @@ export const NAVIGATION: NavGroup[] = [
     items: [
       { href: "/company", label: "Оргструктура", permission: "company:read" },
       { href: "/equipment", label: "Обладнання", permission: "equipment:read" },
+      { href: "/attendance/holidays", label: "Святкові дні", permission: "attendance:manage" },
     ],
   },
   {
