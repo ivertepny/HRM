@@ -1,241 +1,128 @@
-# HRM-система — Зведений документ для консультанта
+# HRM-система — зведення
 
-> **Станом на:** 30 червня 2026  
-> **Призначення документа:** передача контексту зовнішньому консультанту — поточний стан проекту, технічний стек, що вже реалізовано і що планується.
+> **Станом на:** 3 листопада 2026
+> **Для кого:** нова людина в проєкті або зовнішній консультант. Тут описано,
+> що система вже вміє, як вона влаштована і що лишилось. Як запустити — у
+> [README](../README.md), план — у [plan.md](plan.md).
 
----
+## 1. Продукт
 
-## 1. Що це за продукт
+Внутрішня HR-система однієї компанії. Розділи веб-клієнта такі.
 
-**HRM-система** (Human Resource Management) — внутрішній корпоративний інструмент для управління персоналом.
+**«Я»:**
+- мій профіль;
+- мої відпустки;
+- мій табель;
+- AI-асистент.
 
-**Ключові задачі системи:**
-- Ведення бази працівників (профіль, посада, підрозділ, рівень, зарплата, документи)
-- Управління організаційною структурою компанії (ієрархія підрозділів)
-- Облік відпусток: подача заявок → схвалення керівником
-- Облік обладнання компанії (що на складі, що у кого)
-- Тайм-трекінг (присутність: офіс / remote / вихідний)
-- AI-асистент для HR-відповідей (OpenAI GPT-4o-mini)
+**«Команда»:**
+- працівники;
+- відпустки команди;
+- табель команди.
 
----
+**«Компанія»:**
+- оргструктура;
+- обладнання.
 
-## 2. Технічний стек
+**«Адміністрування»:**
+- облікові записи;
+- ролі та доступ.
 
-| Компонент | Технологія |
-|-----------|-----------|
-| **Backend** | Python 3.14, Django 5.2, Django REST Framework 3.16 |
-| **База даних** | PostgreSQL (psycopg2) |
-| **Аутентифікація** | JWT (djangorestframework-simplejwt), blacklist токенів |
-| **API документація** | Swagger / ReDoc (drf-spectacular) |
-| **Організаційне дерево** | django-mptt (Modified Preorder Tree Traversal) |
-| **Історія змін** | django-simple-history (всі критичні моделі) |
-| **Файлове сховище** | AWS S3 (django-storages + boto3) |
-| **AI** | OpenAI API (GPT-4o-mini), tiktoken для підрахунку токенів |
-| **Менеджер пакетів** | uv (з `pyproject.toml` та `uv.lock`) |
-| **Лінтер / форматер** | Ruff |
-| **Тести** | pytest + pytest-django + pytest-cov |
-| **Контейнеризація** | Docker + docker-compose |
-| **Reverse proxy (план)** | Nginx |
-| **CI/CD (план)** | GitHub Actions → VPS / AWS |
-| **Фронтенд (план)** | React (Web), Flutter (Mobile) |
+Кожен бачить лише ті розділи й дані, на які має право. Модель прав описано в
+[access.md](access.md).
 
----
+## 2. Стек
 
-## 3. Поточна структура проекту
+| Шар | Технології |
+|-----|-----------|
+| Бекенд | Python 3.14, Django 5.2, DRF 3.16, simplejwt (access 30 хв / refresh 7 днів, ротація, blacklist), drf-spectacular, django-filter, django-mptt, django-simple-history |
+| БД і кеш | PostgreSQL 17 (psycopg 3; constraints: partial unique, check, exclusion), Redis (кеш прав) |
+| Фронтенд | Next.js 16 (App Router, `cacheComponents`), React 19, TypeScript, Tailwind 4 + shadcn/ui (Base UI), TanStack Query, openapi-fetch |
+| AI | LangGraph / LangChain, OpenAI (`gpt-4o-mini`) |
+| Тести | pytest + factory_boy (298), Vitest (88), Playwright e2e (13 сценаріїв) |
+| Тулінг | uv, ruff, ESLint, Docker |
+| Прод | Hetzner VPS: Docker Compose (gunicorn, Next standalone, nginx), GitHub Actions, restic → Storage Box, Sentry (опційно) |
+
+## 3. Архітектура
 
 ```
-HRM_NEW/
-├── HRM_NEW/          — конфігурація Django (settings, urls, wsgi, asgi)
-├── users/            — кастомна модель User (email-based auth, JWT)
-├── employees/        — Employee, Position, CareerHistory
-├── company/          — StructuralUnit (MPTT-дерево підрозділів)
-├── ai_assistant/     — AI-чат (OpenAI GPT-4o-mini, ChatSession, AIQuery)
-├── docs/             — документація (plan.md, summary.md)
-├── pyproject.toml    — залежності та налаштування (uv)
-├── uv.lock           — lock-файл залежностей
-├── docker-compose.yml
-├── Dockerfile
-└── dev.ps1           — PowerShell-скрипт задач розробки (замість Makefile)
+браузер ─HTTPS─▶ nginx хоста (TLS) ─▶ nginx стеку ─▶ Next.js ─▶ Django (gunicorn) ─▶ PostgreSQL
+                                     (ліміти, HSTS)   (BFF)        (API, права)       Redis
 ```
 
----
+- **BFF.** Браузер говорить лише з Next.js. JWT лежать у httpOnly-cookie,
+  `/api/backend/*` проксує запити в Django з `Authorization`, на 401
+  оновлює токени. Запити, що змінюють дані, приймаються лише з власного
+  Origin. Django з інтернету недоступний.
+- **Права — лише на бекенді.** Скрізь працює `HasPermission` з
+  `required_permissions`, а `scope_queryset` звужує кожен список до області
+  користувача. Об'єктні перевірки враховують підрозділ. Права кешуються в
+  Redis, кеш скидається при зміні ролей.
+- **Контракт API.** OpenAPI-схема (`frontend/openapi.json`) генерує TypeScript-
+  типи (`schema.d.ts`). CI ламається, якщо вони застаріли.
+- **Помилки.** Глобальний обробник перетворює `ValidationError` моделі на 400,
+  `ProtectedError` / `IntegrityError` на 409, недоступний зовнішній сервіс на
+  503, а ліміт на 429 з українським повідомленням.
+- **Історія змін.** simple-history записує її для працівників, підрозділів,
+  призначень ролей, відпусток і обладнання, з автором зміни.
 
-## 4. Реалізовано (поточний стан)
+## 4. Модулі
 
-### 4.1 Аутентифікація та користувачі (`users`)
-- Кастомна модель `User`: email як логін, ім'я, прізвище, статус (active/inactive)
-- JWT-аутентифікація: `Bearer` токен, access (3 дні) + refresh (7 днів), ротація токенів, blacklist
-- Endpoints: `POST /api/users/register/`, `POST /api/users/login/`, `POST /api/users/logout/`
-- Перегляд і редагування: `GET /api/users/`, `GET/PATCH/DELETE /api/users/{id}/`
+| Застосунок | Що вміє |
+|------------|---------|
+| `users` | Вхід за email; облікові записи і статус (неактивний = без входу і прав); власний профіль. Публічної реєстрації немає — записи створює HR. |
+| `employees` | Профіль (посада, підрозділ, рівень, зарплата з валютою, дата народження, фото); прийом / переведення / звільнення. Кадровий журнал (`CareerHistory`) ведеться автоматично. Документи (CV, NDA, договір). Зарплату видно лише власнику і тим, хто має `salary:read`. |
+| `company` | Дерево підрозділів (MPTT) з валідацією (унікальні імена серед сусідів, без циклів, ліміт глибини); закриття підрозділу; історія змін; SVG-діаграма (Graphviz). |
+| `access` | Дозволи `resource:action` з шаблонами, ролі, призначення на компанію чи підрозділ, тимчасові ролі, захист від ескалації; системні ролі через `seed_roles`. |
+| `vacations` | Заявки (щорічна, лікарняний, за свій рахунок, інше) → схвалення / відхилення / скасування. Перетин дат неможливий: його забороняє обмеження в БД (exclusion constraint). Свою заявку розглядати не можна. |
+| `equipment` | Облік (назва, категорія, унікальний серійний номер, опис), видача / повернення / списання; історія видач. Одна одиниця не може бути у двох людей одночасно: це гарантує БД. |
+| `attendance` | Щоденна відмітка (офіс / віддалено / не працює, час, коментар) лише за себе. Правки — протягом 7 днів. Місячний звіт за підрозділами: дні за статусами, робочі дні відпустки, дні без відмітки, години. |
+| `ai_assistant` | LangGraph-агент. Сесії зберігаються в БД, історія обмежена. Про оргструктуру відповідає інструментом у межах прав користувача. Таймаут і ліміт кроків; 503, коли модель недоступна; ліміт 10/хв і 200/день на користувача. |
+| `core` | Пагінація, обробник помилок, ліміти, `/api/health`, захищена роздача файлів (`/media`), Sentry, `seed_demo`. |
 
-### 4.2 Працівники (`employees`)
-- Модель `Employee`: OneToOne → User, посада, підрозділ, дата прийому/звільнення, `HistoricalRecords`
-- Модель `Position`: унікальна назва посади
-- Модель `CareerHistory`: дата, посада, підрозділ, зарплата — повна кар'єрна історія
-- Endpoints (ViewSet): `GET/POST /api/employees/employees/`, `GET/PATCH/DELETE /api/employees/employees/{id}/`
-- Аналогічно для `positions` та `career-history`
+API: `/api/users/`, `/api/employees/`, `/api/company/`, `/api/access/`,
+`/api/vacations/`, `/api/equipment/`, `/api/attendance/`, `/api/ai/`,
+`/api/health/`. Повний опис — у Swagger (`/api/schema/swagger-ui/` у dev).
 
-### 4.3 Організаційна структура (`company`)
-- Модель `StructuralUnit`: MPTT-дерево (необмежена вкладеність), `custom_type` (Офіс / Департамент / тощо)
-- Soft-delete з каскадом: деактивація підрозділу деактивує всіх нащадків
-- Валідація: унікальність імені серед дітей, захист від циклічних зв'язків
-- `HistoricalRecords` для відстеження змін структури
-- Endpoint: `GET/POST /api/company/units/`
+## 5. Безпека
 
-### 4.4 AI-асистент (`ai_assistant`)
-- Ізольовані чат-сесії по UUID (прив'язані до user — не можна зайти в чужу сесію)
-- Якщо запит стосується структури компанії (`структур`, `підрозділ`, `відділ` тощо) — повертає дані з БД без виклику OpenAI (економія токенів)
-- Зберігання діалогу: `ChatSession` (JSON conversation) + `AIQuery` (кожне повідомлення окремо)
-- Контроль токенів: `tiktoken`, ліміт на вхідне повідомлення
+- **Файли** (фото, документи) лежать у Docker volume. Віддаються лише через
+  Next з перевіркою прав у Django; імена файлів — UUID.
+- **Ліміти:**
+  - nginx — за IP;
+  - Django — вхід 10/год на email, 600/хв на користувача, AI 10/хв і 200/день.
+- **Продакшн-налаштування:** HSTS, `SECURE_PROXY_SSL_HEADER`, secure-cookie;
+  `check --deploy` без попереджень (є тест). Фронт віддає CSP,
+  `X-Frame-Options`, `Referrer-Policy`, `Permissions-Policy`.
+- **Статичні AWS-ключі заборонені:** `prod.py` з ними не стартує.
+- **Sentry** не отримує тіл запитів, локальних змінних і даних користувачів.
+- **Бекапи** знімаються щодня і перед деплоєм. Копія поза сервером
+  шифрується restic.
 
-### 4.5 Інфраструктура
-- PostgreSQL через docker-compose
-- `dev.ps1` — всі задачі розробки: `install`, `run`, `migrate`, `lint`, `fmt`, `fix`, `test`, `test-cov`, `docker-up/down/logs`
-- Swagger UI: `GET /api/schema/swagger-ui/`
-- ReDoc: `GET /api/schema/redoc/`
+## 6. Інфраструктура і процес
 
----
+- **CI** (кожен push):
+  - бекенд: ruff, міграції, валідна й актуальна OpenAPI-схема, pytest на
+    PostgreSQL, `pip-audit`;
+  - фронт: lint, тести, typecheck, build, `npm audit`;
+  - e2e Playwright на продакшн-образах;
+  - actions закріплені за SHA, Dependabot оновлює залежності щотижня.
+- **Деплой:** після CI на `main` GitHub Actions по SSH запускає `deploy.sh`
+  (ключ обмежений однією командою): `git reset`, бекап,
+  `docker compose up --build --wait`. Деталі — у [deploy.md](deploy.md).
+- **Локально:** `docker compose up` (dev), `docker-compose.e2e.yml`
+  (ізольований e2e-стенд), `dev.ps1` (команди розробки).
 
-## 5. Що НЕ реалізовано (заплановано)
+## 7. Що лишилось
 
-### 5.1 Система ролей і дозволів (Крок 2) — **наступний пріоритет**
+Детально — у [plan.md](plan.md).
 
-Замість хардкодних ролей — **гнучка IAM-подібна система**:
-
-- Дозволи задаються рядками `resource:action` (наприклад: `employees:read`, `salary:write`, `vacations:manage`)
-- **Роль** = іменований набір дозволів (створюється динамічно, не захардкоджено)
-- Користувач може мати **декілька ролей**
-- Scope: роль може бути обмежена конкретним підрозділом (`StructuralUnit`) — наприклад Team Lead бачить тільки свій відділ
-- Тимчасові ролі (`expires_at`)
-- Seed-команда з 3 системними ролями за замовчуванням:
-
-| Роль | Дозволи |
-|------|---------|
-| `System Admin` | всі ресурси, всі дії |
-| `HR Manager` | employees, salary, vacations, equipment, attendance, company (читання) |
-| `Employee` | власний профіль, власна зарплата, подача на відпустку, AI |
-
-### 5.2 Розширення профілю працівника (Крок 3)
-
-Додати до `Employee`:
-- `birth_date` — дата народження
-- `photo` — фото (AWS S3)
-- `salary` + `HistoricalRecords` — зарплата з повною історією змін
-- `level` (Trainee / Junior / Middle / Senior) + `HistoricalRecords`
-- `documents` — завантаження файлів (CV, NDA тощо, AWS S3)
-
-### 5.3 Модуль відпусток — новий застосунок `vacations` (Крок 4)
-
-- `VacationRequest`: працівник, дати початку/кінця, статус (pending/approved/rejected), хто схвалив, `HistoricalRecords`
-- Workflow: працівник подає → HR/Адмін схвалює або відхиляє
-- Повна історія відпусток за весь період роботи
-
-### 5.4 Модуль обладнання — новий застосунок `equipment` (Крок 5)
-
-- `Equipment`: унікальний серійний номер, назва, статус (in_stock / assigned)
-- `EquipmentAssignment`: обладнання → працівник, дати призначення та повернення
-- Валідація: одна одиниця обладнання не може бути у двох працівників одночасно
-- Обладнання без призначення = на складі
-
-### 5.5 Тайм-трекінг — новий застосунок `attendance` (Крок 6)
-
-- `AttendanceRecord`: працівник, дата, час початку/завершення, статус (remote/office/off)
-- API для відмітки присутності
-- Агрегований звіт по місяцях
-
-### 5.6 Скидання пароля через email (Крок 7)
-
-- Email-бекенд (SMTP або AWS SES)
-- Стандартний Django flow: `password-reset/` → підтвердження через посилання
-
-### 5.7 CI/CD (Крок 8)
-
-- GitHub Actions: lint + tests при PR, Docker build при push у `main`
-- Deploy workflow → VPS / AWS
-
-### 5.8 Продакшн-готовність (Крок 9)
-
-- Nginx як reverse proxy
-- HTTPS (Let's Encrypt)
-- `collectstatic` у Docker
-- `DEBUG=False`, перевірка `ALLOWED_HOSTS`
-- Кеш дозволів у Redis
-
----
-
-## 6. Інтеграції (заплановані)
-
-| Інтеграція | Опис |
-|-----------|------|
-| **Slack Bot** | Webhook: подача на відпустку, нагадування |
-| **Google Calendar API** | Синхронізація відпусток та подій |
-| **React (Web)** | Основний фронтенд (замінить поточний Swagger UI для кінцевих юзерів) |
-| **Flutter (Mobile)** | Авторизація, профіль, відпустки, присутність, Push-сповіщення |
-| **Graphviz** | Вже є в залежностях — візуалізація org-структури |
-
----
-
-## 7. Відомі технічні борги
-
-| # | Проблема | Де |
-|---|----------|----|
-| 7.1 | `graphviz` є в `INSTALLED_APPS`, але це не Django-застосунок — треба прибрати | `settings.py` рядок 33 |
-| 7.2 | JWT `ACCESS_TOKEN_LIFETIME = 3 дні` — занадто довго для продакшну (рекомендовано 15–60 хв) | `settings.py` |
-| 7.3 | `DEBUG = os.getenv('DEBUG')` повертає рядок `"False"` (truthy!) замість `bool` — небезпечно в prod | `settings.py` |
-| 7.4 | Всі views ще не захищені дозволами (тільки `IsAuthenticated`) — буде виправлено в Кроку 2 | всі `views.py` |
-| 7.5 | Відсутні тести (файли `tests.py` порожні) | всі застосунки |
-| 7.6 | `STATIC_ROOT` не налаштовано — `collectstatic` не спрацює | `settings.py` |
-
----
-
-## 8. API — поточні endpoints
-
-| Метод | URL | Опис |
-|-------|-----|------|
-| `POST` | `/api/users/register/` | Реєстрація |
-| `POST` | `/api/users/login/` | Вхід (повертає JWT) |
-| `POST` | `/api/users/logout/` | Вихід (blacklist токена) |
-| `GET` | `/api/users/` | Список користувачів |
-| `GET/PATCH/DELETE` | `/api/users/{id}/` | Деталі користувача |
-| `GET/POST` | `/api/employees/employees/` | Список / створення працівників |
-| `GET/PATCH/DELETE` | `/api/employees/employees/{id}/` | Деталі працівника |
-| `GET/POST` | `/api/employees/positions/` | Посади |
-| `GET/POST` | `/api/employees/career-history/` | Кар'єрна історія |
-| `GET/POST` | `/api/company/units/` | Підрозділи (дерево) |
-| `POST` | `/api/ai/ask/` | Запит до AI-асистента |
-| `GET` | `/api/schema/swagger-ui/` | Swagger UI |
-| `GET` | `/api/schema/redoc/` | ReDoc |
-
----
-
-## 9. Запуск проекту локально
-
-```powershell
-# 1. Встановити залежності
-uv sync --group dev
-
-# 2. Запустити PostgreSQL (через Docker)
-.\dev.ps1 docker-up
-
-# 3. Міграції
-.\dev.ps1 migrate
-
-# 4. Запустити сервер
-.\dev.ps1 run
-# → http://localhost:8000/api/schema/swagger-ui/
-```
-
-**.env файл** (потрібен у корені проекту):
-```
-SECRET_KEY=...
-DEBUG=True
-ALLOWED_HOSTS=localhost,127.0.0.1
-POSTGRES_DB=hrm_db
-POSTGRES_USER=hrm_user
-POSTGRES_PASSWORD=...
-POSTGRES_HOST=db
-POSTGRES_PORT=5432
-OPENAI_API_KEY=...
-IN_DOCKER=False
-```
-
+- **Крок 6, скидання пароля і запрошення:** потрібен SMTP-провайдер; на
+  Hetzner немає IAM-ролей для SES.
+- **Налаштування сервера:**
+  - DNS, certbot, секрети GitHub і `DEPLOY_ENABLED`;
+  - Storage Box з snapshots і `restic init`;
+  - через кілька днів роботи HTTPS — HSTS на рік.
+- **Пізніше:**
+  - державні свята в робочих днях табеля, експорт звіту в CSV;
+  - Flutter-клієнт, Slack-бот, Google Calendar.

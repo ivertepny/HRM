@@ -1,87 +1,134 @@
-# HRM-Project-Stage-CC
-HRM Project Stage CC Template Repo
+# HRM — внутрішня HR-система
 
-**Project Vision Statement:**
+Кадри однієї компанії в одному місці:
+- профілі працівників і документи;
+- оргструктура;
+- відпустки зі схваленням;
+- обладнання на руках;
+- табель присутності;
+- AI-асистент, який відповідає з урахуванням прав.
 
-*"Empowering Innovation: Bridging Startups and Investors for Ukraine's Economic Growth"*
+Доступ налаштовується гнучко: ролі з дозволами `resource:action`, які діють
+на всю компанію або лише на підрозділ (див. [docs/access.md](docs/access.md)).
 
-**Overview:**
+| Частина | Технології |
+|---------|-----------|
+| Бекенд | Python 3.14, Django 5.2, DRF, PostgreSQL 17, Redis (кеш прав), drf-spectacular |
+| Фронтенд | Next.js 16 (App Router, BFF), React 19, TypeScript, Tailwind 4, TanStack Query |
+| AI | LangGraph / LangChain + OpenAI |
+| Тести | pytest + factory_boy, Vitest, Playwright (e2e) |
+| Інфраструктура | Docker, GitHub Actions, Hetzner VPS (gunicorn + nginx), restic-бекапи |
 
-In the dynamic world of entrepreneurship, the path from a transformative idea to a successful venture is often complex and challenging. Our WebAPI application, developed using the Django Rest Framework, is designed to be a cornerstone in simplifying this journey. We aim to create a robust and secure digital platform that caters to two pivotal groups in the business ecosystem: innovative startups with compelling ideas and forward-thinking investors seeking valuable opportunities.
+## Як це влаштовано
 
-**Goals:**
+```
+браузер ──▶ Next.js (сторінки + BFF) ──▶ Django REST API ──▶ PostgreSQL
+              │ JWT у httpOnly-cookie        │ ролі й scope       Redis (кеш прав)
+              └ /media → файли з перевіркою прав
+```
 
-1. **Fostering Collaborative Opportunities:** Our platform bridges startups and investors, enabling startups to showcase their groundbreaking proposals and investors to discover and engage with high-potential ventures.
+- **Браузер не бачить ні JWT, ні Django.** Next.js тримає токени в
+  httpOnly-cookie і проксує запити (`/api/backend/…`), додаючи
+  `Authorization`. Подробиці — у [frontend/README.md](frontend/README.md).
+- **Права перевіряє лише бекенд.** Фронт ховає пункти меню, на які немає
+  дозволу, але кожну відповідь вирішує Django: області видимості (scope)
+  застосовуються до кожного запиту і кожного об'єкта.
+- **Типи фронту генеруються з OpenAPI-схеми бекенду.** Це `openapi.json` і
+  `schema.d.ts`; CI перевіряє, що вони не застаріли.
 
-2. **Seamless User Experience:** We prioritize intuitive navigation and interaction, ensuring that startups and investors can easily connect, communicate, and collaborate.
+## Швидкий старт (Docker)
 
-3. **Secure and Trustworthy Environment:** Security is at the forefront of our development, ensuring the confidentiality and integrity of all shared information and communications.
+```powershell
+copy .env.example .env          # заповнити SECRET_KEY і POSTGRES_PASSWORD
+docker compose up -d --build    # api :8000, frontend :3000, db, redis, pgAdmin :5050
+docker compose exec api python manage.py seed_demo
+```
 
-4. **Supporting Economic Growth:** By aligning startups with the right investors, our platform not only cultivates individual business success but also contributes significantly to the growth and diversification of Ukraine's economy.
+Відкрийте http://localhost:3000. Якщо порт 8000 уже зайнятий, задайте
+`API_PORT=8001` у `.env`.
 
-**Commitment:**
+Що створює `seed_demo` (лише для розробки, з `DEBUG=False` команда відмовляється
+працювати):
+- **оргструктуру:** Головний офіс → HR, IT → Backend / Frontend;
+- **користувачів:** `admin@`, `hr@`, `olena@`, `petro@`, `maria@example.com`;
+- **дані:** відпустки, обладнання і табель за минулий тиждень.
 
-We are committed to delivering a platform that is not just a marketplace for ideas and investments but a thriving community that nurtures innovation fosters economic development, and supports the aspirations of entrepreneurs and investors alike. Our vision is to see a world where every transformative idea has the opportunity to flourish and where investors can confidently fuel the engines of progress and innovation.
+Пароль за замовчуванням — `DEFAULT_PASSWORD` у
+`apps/core/management/commands/seed_demo.py`, свій можна задати через
+`--password`.
 
-![image](https://github.com/mehalyna/Forum-Project-Stage-CC/assets/39273210/54b0de76-f6e3-4bf3-bf38-fb5bf1d1d63d)
+## Розробка без Docker
 
+Потрібні Python 3.14 + [uv](https://docs.astral.sh/uv/), Node 22, PostgreSQL і
+(необов'язково) Redis. Без `REDIS_URL` кеш живе в пам'яті процесу.
 
+```powershell
+.\dev.ps1 install      # uv sync
+.\dev.ps1 migrate
+.\dev.ps1 seed         # дозволи і системні ролі (seed_roles)
+.\dev.ps1 run          # Django на :8000; Swagger — /api/schema/swagger-ui/
 
-### Basic Epics
+cd frontend
+npm install
+copy .env.example .env.local
+npm run dev            # http://localhost:3000
+```
 
-0. **As a user of the platform**, I want the ability to represent both as a startup and as an investor company, so that I can engage in the platform's ecosystem from both perspectives using a single account.
+Інші команди `dev.ps1`: `lint`, `fmt`, `fix`, `check`, `test`, `test-cov`,
+`makemigrations`, `shell`, `docker-up` / `docker-down` / `docker-logs`.
 
-   - Features:
-     - implement the functionality for users to select and switch roles.
+## Тести і перевірки
 
-2. **As a startup company,** I want to create a profile on the platform, so that I can present my ideas and proposals to potential investors.
-   
-   - Features:
-     -  user registration functionality for startups.
-     -  profile setup page where startups can add details about their company and ideas.
+```powershell
+uv run pytest                       # бекенд (потрібен PostgreSQL з POSTGRES_* з .env)
+uv run ruff check . ; uv run ruff format --check .
 
-3. **As an investor,** I want to view profiles of startups, so that I can find promising ideas to invest in.
-   
-   - Features:
-     -  feature for investors to browse and filter startup profiles.
-     -  viewing functionality for detailed startup profiles.
+cd frontend
+npm test ; npm run lint ; npm run typecheck
+npm run e2e:stack ; npx playwright test ; npm run e2e:down   # e2e на ізольованому стенді :13000
+```
 
-4. **As a startup company,** I want to update my project information, so that I can keep potential investors informed about our progress and milestones.
-   
-   - Features:
-     -  functionality for startups to edit and update their project information.
-     -  system to notify investors about updates to startups they are following.
+E2e-стенд (`docker-compose.e2e.yml`) має власну базу в пам'яті й засіюється
+`seed_demo`. Dev-базу він не чіпає.
 
-5. **As an investor,** I want to be able to contact startups directly through the platform, so that I can discuss investment opportunities.
-   
-   - Features:
-     -  secure messaging system within the platform for communication between startups and investors.
-     -  privacy and security measures to protect the communication.
+**Після змін в API** (серіалізатори, в'юсети, `extend_schema`): у `frontend/`
+виконайте `npm run api:types` і закомітьте `openapi.json` разом зі
+`schema.d.ts`.
 
-6. **As a startup company,** I want to receive notifications about interested investors, so that I can engage with them promptly.
-   
-   - Features:
-     -  notification functionality for startups when an investor shows interest or contacts them.
-     -  dashboard for startups to view and manage investor interactions.
+**Після змін каталогу дозволів** (`apps/access/catalog.py`): виконайте
+`python manage.py seed_roles --reset-system-roles`, щоб оновити системні ролі в
+наявній базі.
 
-7. **As an investor,** I want to save and track startups that interest me, so that I can manage my investment opportunities effectively.
-   
-   - Features:
-     -  feature for investors to save and track startups.
-     -  dashboard for investors to manage their saved startups and investment activities.
+## Структура
 
-### Additional Features
+```
+config/              налаштування: base / dev / prod / test, urls
+apps/
+  users/             облікові записи, вхід (JWT), профіль
+  employees/         працівники, посади, кадровий журнал, документи, зарплата
+  company/           оргструктура (MPTT-дерево), історія змін, SVG-діаграма
+  access/            дозволи, ролі, призначення зі scope, кеш прав
+  vacations/         заявки на відпустку і їх розгляд
+  equipment/         облік і видача обладнання
+  attendance/        табель і місячний звіт
+  ai_assistant/      LangGraph-агент з інструментом оргструктури
+  core/              обробник помилок, пагінація, ліміти, health, /media, Sentry
+frontend/            Next.js-клієнт (див. frontend/README.md)
+nginx/, deploy.sh, docker-compose.server.yml, scripts/   продакшн
+docs/                план, доступ, деплой, зведення
+```
 
-- **Security and Data Protection**: Ensure that user data, especially sensitive financial information, is securely handled.
-  
-- **User Feedback System**: Create a system for users to provide feedback on the platform, contributing to continuous improvement.
+## Документація
 
-- **Analytical Tools**: Implement analytical tools for startups to understand investor engagement and for investors to analyze startup potential.
+- [docs/access.md](docs/access.md) — ролі й дозволи, для HR і адміністраторів.
+- [docs/deploy.md](docs/deploy.md) — сервер, деплой, бекапи, відновлення.
+- [docs/summary.md](docs/summary.md) — що вже є в системі і як воно працює.
+- [docs/plan.md](docs/plan.md) — план розвитку.
+- Swagger у dev: http://localhost:8000/api/schema/swagger-ui/.
 
-### Agile Considerations
+## Продакшн
 
-- Each user story can be broken down into smaller tasks and developed in sprints.
-- Regular feedback from both user groups (startups and investors) should be incorporated.
-
-
-
+Push у `main` запускає CI (`.github/workflows/ci.yml`). Після нього, якщо
+ввімкнено `DEPLOY_ENABLED`, GitHub Actions по SSH запускає `deploy.sh` на
+Hetzner VPS. Як налаштувати сервер, бекапи і відновлення — у
+[docs/deploy.md](docs/deploy.md).
